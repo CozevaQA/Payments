@@ -177,6 +177,8 @@ public class RunTest {
 			
 			login.LoginCozeva(Url);
 			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("context"))));
+			
+			System.out.println("loggedin");
 
 			List<String[]> groups = PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/MolinaDataset/MolinaGroupMap.csv");
 			
