@@ -1,0 +1,30 @@
+LobName,Measures,Incentive
+Medi-Cal,BCS-E,25
+Medi-Cal,CCS-E,25
+Medi-Cal,WCV,50
+Medi-Cal,COL-E,20
+Medi-Cal,CBP,100
+Medi-Cal,CDEV,50
+Medi-Cal,GSD2,120
+Medi-Cal,IMA,100
+Medi-Cal,LSC,25
+Medi-Cal,TFL1,20
+Medi-Cal,W30A ,50
+Medi-Cal,W30B,50
+Medi-Cal,IMAHPV-E ,100
+Medi-Cal,CISINFL-E ,100
+Medicare,BCS-E,50
+Medicare,CBP,75
+Medicare,COA3,25
+Medicare,COL-E,50
+Medicare,EED,25
+Medicare,FMCOVR,50
+Medicare,GSD2,75
+Medicare,KED,50
+Medicare,PDCA,50
+Medicare,PDCD,50
+Medicare,PDCS,50
+Medicare,OMW,50
+Medicare,SPCA,25
+Medicare,SUPD,25
+Medicare,TRCM,25

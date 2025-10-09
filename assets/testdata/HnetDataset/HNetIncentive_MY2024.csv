@@ -1,0 +1,31 @@
+LobName,Measures,Incentive
+HEDIS Commercial,CISCMB10,200
+HEDIS Commercial,CBP,200
+HEDIS Commercial,GSD1,200
+HEDIS Commercial,COL-E,200
+Medi-Cal,BCS-E,25
+Medi-Cal,CCS,25
+Medi-Cal,WCV,50
+Medi-Cal,CISCMB10,200
+Medi-Cal,COL-E,20
+Medi-Cal,CBP,100
+Medi-Cal,CDEV,50
+Medi-Cal,GSD2,120
+Medi-Cal,IMACMB2,100
+Medi-Cal,LSC,25
+Medi-Cal,TFL1,20
+Medi-Cal,W30A,50
+Medi-Cal,W30B,50
+Medicare,BCS-E,75
+Medicare,SUPD,75
+Medicare,COL-E,50
+Medicare,FMCOVR,50
+Medicare,OMW,50
+Medicare,SPCA,50
+Medicare,TRCE,50
+Medicare,TRCM,50
+Medicare,EED,25
+Medicare,COA2,25
+Medicare,COA4,25
+Medicare,GSD2,75
+Medicare,CBP,25

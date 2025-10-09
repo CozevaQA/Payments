@@ -1,0 +1,183 @@
+package report;
+
+import java.io.*;
+import java.nio.file.*;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
+
+public class CSVComparator {
+
+    ReportGeneratorContextwise report;
+
+    public CSVComparator() throws IOException {
+        report = ReportGeneratorContextwise.getInstance();
+    }
+
+    public void compareLastTwoCSVs(String customerFolderPath) {
+        try {
+            // 1. Get last two CSV files
+            List<Path> csvFiles = Files.list(Paths.get(customerFolderPath))
+                    .filter(p -> p.toString().endsWith(".csv"))
+                    .sorted(Comparator.comparingLong(p -> p.toFile().lastModified()))
+                    .collect(Collectors.toList());
+
+            if (csvFiles.size() < 2) {
+                System.err.println("Not enough CSV files to compare.");
+                return;
+            }
+
+           // Path prevFile = csvFiles.get(csvFiles.size() - 2);
+          //  Path currentFile = csvFiles.get(csvFiles.size() - 1);
+            
+            LocalDate today = LocalDate.now();
+
+            Path currentFile = null;
+            Path prevFile = null;
+
+            // 3. Loop from last to first (newest to oldest)
+            for (int i = csvFiles.size() - 1; i >= 0; i--) {
+                Path file = csvFiles.get(i);
+                LocalDate fileDate = Files.getLastModifiedTime(file)
+                        .toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate();
+
+                if (currentFile == null && fileDate.isEqual(today)) {
+                    currentFile = file;
+                } else if (currentFile != null && fileDate.isBefore(today)) {
+                    prevFile = file;
+                    break;
+                }
+            }
+
+            if (currentFile == null) {
+                System.err.println("No CSV file found for today.");
+                return;
+            }
+
+            if (prevFile == null) {
+                System.err.println("No previous CSV file found before today.");
+                return;
+            }
+
+            // 4. Print matched files
+            System.out.println("Current backup file (today): " + currentFile.getFileName());
+            System.out.println("Previous backup file (before today): " + prevFile.getFileName());
+
+            // 2. Read both CSVs
+            Map<String, List<String>> prevData = new LinkedHashMap<>();
+            Map<String, List<String>> currentData = new LinkedHashMap<>();
+            List<String> headers;
+
+            boolean quarterRequired;
+
+            // Read previous file
+            try (BufferedReader br = new BufferedReader(new FileReader(prevFile.toFile()))) {
+                headers = Arrays.stream(br.readLine().split(","))
+                        .map(h -> h.replace("\"", "").trim())
+                        .collect(Collectors.toList());
+
+                quarterRequired = headers.size() > 1 && headers.get(1).equalsIgnoreCase("Quarter");
+
+                String line;
+                while ((line = br.readLine()) != null) {
+                    List<String> row = parseCSVRow(line);
+                    if (!row.isEmpty()) {
+                        String key = getKey(row, quarterRequired);
+                        prevData.put(key, row);
+                    }
+                }
+            }
+
+            // Read current file
+            try (BufferedReader br = new BufferedReader(new FileReader(currentFile.toFile()))) {
+                br.readLine(); // skip header
+                String line;
+                while ((line = br.readLine()) != null) {
+                    List<String> row = parseCSVRow(line);
+                    if (!row.isEmpty()) {
+                        String key = getKey(row, quarterRequired);
+                        currentData.put(key, row);
+                    }
+                }
+            }
+
+            // Compare data
+           // Set<String> allKeys = new HashSet<>();
+            Set<String> allKeys = new LinkedHashSet<>();
+            allKeys.addAll(prevData.keySet());
+            allKeys.addAll(currentData.keySet());
+
+            int startIndex = quarterRequired ? 2 : 1;
+
+            for (String key : allKeys) {
+                List<String> prevRow = prevData.get(key);
+                List<String> currRow = currentData.get(key);
+
+                String context = key.split("\\|")[0];
+                String quarter = quarterRequired && key.contains("|") ? key.split("\\|")[1] : "";
+
+                for (int i = startIndex; i < headers.size(); i++) {
+                    String columnName = headers.get(i).trim();
+                    String prevVal = (prevRow != null && i < prevRow.size()) ? prevRow.get(i) : "NA";
+                    String currVal = (currRow != null && i < currRow.size()) ? currRow.get(i) : "NA";
+
+                    String status = valuesMatch(prevVal, currVal) ? "Pass" : "Fail";
+                    String detail = "Prev: " + prevVal + ", Current: " + currVal;
+
+                    report.logCSVComparisonResult(context, columnName + " Match", status, detail, quarter);
+                }
+                report.logCSVComparisonResult("", "", "", "", "");
+            }
+
+        } catch (IOException e) {
+            System.err.println("Error comparing CSVs: " + e.getMessage());
+        }
+    }
+
+  /*  private List<String> parseCSVRow(String line) {
+        List<String> values = new ArrayList<>();
+        try (Scanner scanner = new Scanner(line)) {
+            scanner.useDelimiter(",");
+            while (scanner.hasNext()) {
+                values.add(scanner.next().replace("\"", "").trim());
+            }
+        }
+        return values;
+    }*/
+    
+    private List<String> parseCSVRow(String line) {
+        try (CSVReader reader = new CSVReader(new StringReader(line))) {
+            String[] parsed = reader.readNext();
+            if (parsed != null) {
+                return Arrays.asList(parsed);
+            }
+        } catch (IOException | CsvValidationException e) {
+            e.printStackTrace();
+        }
+        return Collections.emptyList();
+    }
+
+
+    private String getKey(List<String> row, boolean quarterRequired) {
+        if (quarterRequired && row.size() > 1) {
+            return row.get(0) + "|" + row.get(1); 
+        }
+        return row.get(0); 
+    }
+
+    private boolean valuesMatch(String v1, String v2) {
+        try {
+            double d1 = Double.parseDouble(v1);
+            double d2 = Double.parseDouble(v2);
+            return Double.compare(d1, d2) == 0;
+        } catch (NumberFormatException e) {
+            return v1.equals(v2);
+        }
+    }
+}
