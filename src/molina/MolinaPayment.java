@@ -2,12 +2,12 @@ package molina;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import org.openqa.selenium.By;
@@ -41,7 +41,7 @@ public class MolinaPayment extends PaymentHelper {
 	Map<String, List<Map<String, Object>>> programDataMap = new LinkedHashMap<>();
 	Map<String, Map<String, Object>> metricDataMap = new LinkedHashMap<>();
 	Set<String> programsfromExtract = new LinkedHashSet<>();
-	
+
 	List<String[]> deferredPaymentPrintLogs = new ArrayList<>();
 
 	public void validateMolina(String GroupName) {
@@ -63,10 +63,10 @@ public class MolinaPayment extends PaymentHelper {
 			lob.click();
 			driver.findElement(By.xpath(properties.getProperty("apply"))).click();
 			String lobName = lob.getText().trim();
-			// System.out.println(lobName);
+			System.out.println(lobName);
 
 			try {
-				Thread.sleep(10000);
+				Thread.sleep(5000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -79,123 +79,128 @@ public class MolinaPayment extends PaymentHelper {
 			String programName = null;
 			List<Map<String, Object>> programDataList = new ArrayList<>();
 
-			boolean isIncentiveProgramDropdownpresent;
-			try {
-				wait.until(ExpectedConditions
-						.visibilityOfElementLocated(By.xpath(properties.getProperty("incentiveProgramContainer"))));
-				isIncentiveProgramDropdownpresent = true;
-			} catch (Exception e) {
-				isIncentiveProgramDropdownpresent = false;
-			}
+			if (!lobName.equals("Medicare")) {
 
-			if (isIncentiveProgramDropdownpresent) {
-				driver.findElement(By.xpath(properties.getProperty("incentiveProgramDropdown"))).click();
-				int programCount = driver.findElements(By.xpath(properties.getProperty("incentiveprograms"))).size();
+				boolean isIncentiveProgramDropdownpresent;
+				int programCount = 0;
 
-				driver.findElement(By.xpath(properties.getProperty("incentiveProgramDropdown"))).click();
-				for (int j = 0; j < programCount; j++) {
+				try {
+					wait.until(ExpectedConditions
+							.visibilityOfElementLocated(By.xpath(properties.getProperty("incentiveProgramContainer"))));
+
+					isIncentiveProgramDropdownpresent = true;
+
 					driver.findElement(By.xpath(properties.getProperty("incentiveProgramDropdown"))).click();
-					List<WebElement> programList = driver
-							.findElements(By.xpath(properties.getProperty("incentiveprograms")));
-					WebElement program = programList.get(j);
-					program = wait.until(ExpectedConditions.visibilityOf(program));
-					program.click();
-					programName = program.getText();
+					programCount = driver.findElements(By.xpath(properties.getProperty("incentiveprograms"))).size();
+
+					driver.findElement(By.xpath(properties.getProperty("incentiveProgramDropdown"))).click();
+
+				} catch (Exception e) {
+					isIncentiveProgramDropdownpresent = false;
+
+					programCount = driver.findElements(By.xpath(properties.getProperty("hidden_incentiveProgram")))
+							.size();
+				}
+
+				programCount = programCount != 0 ? programCount : 1;
+
+				for (int j = 0; j < programCount; j++) {
+					if (isIncentiveProgramDropdownpresent) {
+						driver.findElement(By.xpath(properties.getProperty("incentiveProgramDropdown"))).click();
+						List<WebElement> programList = driver
+								.findElements(By.xpath(properties.getProperty("incentiveprograms")));
+						WebElement program = programList.get(j);
+						program = wait.until(ExpectedConditions.visibilityOf(program));
+						program.click();
+						programName = program.getText();
+					} else {
+						List<WebElement> hiddenProgramList = driver
+								.findElements(By.xpath(properties.getProperty("hidden_incentiveProgram")));
+
+						programName = hiddenProgramList.size() >= 1
+								? hiddenProgramList.get(j).getAttribute("data-value")
+								: "";
+
+						/*
+						 * if(hiddenProgramList.size() >= 1) { programName =
+						 * hiddenProgramList.get(j).getAttribute("data-value"); }
+						 */
+
+					}
+
+					List<Object> incentiveDollarAmaount = Arrays.asList(-1.0, -1.0, "N/A");
+					try {
+						List<WebElement> incentiveCard_hide = driver
+								.findElements(By.xpath(properties.getProperty("incentiveCard_hide")));
+
+						if (incentiveCard_hide.size() == 1) {
+							driver.findElement(By.xpath(properties.getProperty("incentiveCard"))).click();
+						}
+
+						WebElement earnPtsElement = wait.until(ExpectedConditions
+								.visibilityOfElementLocated(By.xpath(properties.getProperty("earnedPts"))));
+						earnedPts = Double.parseDouble(earnPtsElement.getText());
+
+						WebElement potentialPtsElement = wait.until(ExpectedConditions
+								.visibilityOfElementLocated(By.xpath(properties.getProperty("potentialPts"))));
+						potentialPts = Double.parseDouble(potentialPtsElement.getText().replace("/", ""));
+
+						driver.findElement(By.xpath(properties.getProperty("incentiveCard"))).click();
+						incentiveDollarAmaount = extractPotentialPayout();
+					} catch (Exception e) {
+						earnedPts = -1.0;
+						potentialPts = -1.0;
+					}
+
 					System.out.println(programName);
-
-					WebElement earnPtsElement = wait.until(ExpectedConditions
-							.visibilityOfElementLocated(By.xpath(properties.getProperty("earnedPts"))));
-					earnedPts = Double.parseDouble(earnPtsElement.getText());
 					System.out.println(earnedPts);
-
-					WebElement potentialPtsElement = wait.until(ExpectedConditions
-							.visibilityOfElementLocated(By.xpath(properties.getProperty("potentialPts"))));
-					potentialPts = Double.parseDouble(potentialPtsElement.getText().replace("/", ""));
 					System.out.println(potentialPts);
+					System.out.println(incentiveDollarAmaount.get(0));
+					System.out.println(incentiveDollarAmaount.get(1));
+					System.out.println(incentiveDollarAmaount.get(2));
 
 					Map<String, Object> programData = new HashMap<>();
 					programData.put("Program", programName);
 					programData.put("EarnedPts", earnedPts);
 					programData.put("PotentialPts", potentialPts);
+					programData.put("EarnAmaount", incentiveDollarAmaount.get(0));
+					programData.put("PotentialAmaount", incentiveDollarAmaount.get(1));
+					programData.put("PotentialPayout", incentiveDollarAmaount.get(2));
 					programDataList.add(programData);
 					programDataMap.put(lobName, programDataList);
-					metricDataMap = getMetricIncentiveDetails(customer);
-					compareMolinaPayment(GroupName, lobName, programName);
-					metricDataMap.clear();
 
+					if (!incentiveDollarAmaount.get(2).equals("N/A")) {
+						metricDataMap = getMetricIncentiveDetails(customer);
+						compareMolinaPayment(GroupName, lobName, programName);
+						metricDataMap.clear();
+					}
 				}
-
-			} else {
-
-				// String hiddenProgram = null;
-				try {
-
-					Thread.sleep(3000);
-
-					List<WebElement> hiddenElements = driver
-							.findElements(By.xpath(properties.getProperty("hidden_incentiveProgram")));
-
-					programName = hiddenElements.size() == 1 ? hiddenElements.get(0).getAttribute("data-value")
-							: lobName;
-					System.out.println(programName);
-					WebElement earnPtsElement = wait.until(ExpectedConditions
-							.visibilityOfElementLocated(By.xpath(properties.getProperty("earnedPts"))));
-					earnedPts = Double.parseDouble(earnPtsElement.getText());
-
-					WebElement potentialPtsElement = wait.until(ExpectedConditions
-							.visibilityOfElementLocated(By.xpath(properties.getProperty("potentialPts"))));
-					potentialPts = Double.parseDouble(potentialPtsElement.getText().replace("/", ""));
-
-				} catch (Exception e) {
-					earnedPts = -1.0;
-					potentialPts = -1.0;
-				}
-
-				Map<String, Object> programData = new HashMap<>();
-				programData.put("Program", programName);
-				programData.put("EarnedPts", earnedPts);
-				programData.put("PotentialPts", potentialPts);
-				programDataList.add(programData);
-				programDataMap.put(lobName, programDataList);
-				metricDataMap = getMetricIncentiveDetails(customer);
-				compareMolinaPayment(GroupName, lobName, programName);
-				metricDataMap.clear();
 			}
 
-			//compareMolinaPayment(GroupName, lobName, programName);
-			//metricDataMap.clear();
-			
-			/*String potentialpoints = earnedPts + "/" + potentialPts;
-			if (potentialpoints != "0.00/0.00") {
-				if(potentialpoints == "-1.0/-1.0") {
-					report.logTestResult(GroupName, "Incentive Points !=0", "Pass", "NA", lobName, programName);
-				}
-				else {
-					report.logTestResult(GroupName, "Incentive Points !=0", "Pass", potentialpoints, lobName, programName);
-				}
-				
-			} else {
-				report.logTestResult(GroupName, "Incentive Points !=0", "Fail", potentialpoints, lobName, programName);
-			}*/
-			
+			else {
+                // Add 0/0 in medicare
+				Map<String, Object> programData = new HashMap<>();
+				programData.put("Program", lobName);
+				programData.put("EarnedPts", "-1.0");
+				programData.put("PotentialPts", "-1.0");
+				programData.put("EarnAmaount", "-1.0");
+				programData.put("PotentialAmaount", "-1.0");
+				programData.put("PotentialPayout", "-1.0");
+				programDataList.add(programData);
+				programDataMap.put(lobName, programDataList);
+
+			}
 
 		}
 
 		comparePrograms(GroupName);
-		
+
+		report.logTestResult(GroupName, "", "", "", "", "");
 		for (String[] log : deferredPaymentPrintLogs) {
 			report.logTestResult(log[0], log[1], log[2], log[3], log[4], log[5]);
 		}
-		/*
-		 * for (Map.Entry<String, List<Map<String, Object>>> entry :
-		 * programDataMap.entrySet()) { String lobName = entry.getKey();
-		 * List<Map<String, Object>> programs = entry.getValue();
-		 * 
-		 * System.out.println("LOB: " + lobName); for (Map<String, Object> program :
-		 * programs) { System.out.println("  Program: " + program.get("Program"));
-		 * System.out.println("    EarnedPts: " + program.get("EarnedPts"));
-		 * System.out.println("    PotentialPts: " + program.get("PotentialPts")); } }
-		 */
+		report.logTestResult(GroupName, "", "", "", "", "");
+
 	}
 
 	public void comparePrograms(String GroupName) {
@@ -206,26 +211,12 @@ public class MolinaPayment extends PaymentHelper {
 			Set<String> actualProgramSet = new LinkedHashSet<>();
 
 			Set<String> referenceSet = new LinkedHashSet<>();
-			
+
 			for (Map<String, Object> program : programList) {
 				String programName = program.get("Program").toString().trim();
 				actualProgramSet.add(programName);
-				
-				String potentialpoints = program.get("EarnedPts") + "/" + program.get("PotentialPts");
-				if (potentialpoints != "0.00/0.00") {
-					if(potentialpoints .equals("-1.0/-1.0")) {
-						report.logTestResult(GroupName, "Incentive Points !=0", "Pass", "NA", key, programName);
-					}
-					else {
-						report.logTestResult(GroupName, "Incentive Points !=0", "Pass", potentialpoints, key, programName);
-					}
-					
-				} else {
-					report.logTestResult(GroupName, "Incentive Points !=0", "Fail", potentialpoints, key, programName);
-				}
-				
 			}
-			
+
 			for (String p : programsfromExtract) {
 				if ("ALL".equalsIgnoreCase(key)) {
 					referenceSet.add(p);
@@ -236,12 +227,41 @@ public class MolinaPayment extends PaymentHelper {
 				}
 			}
 
-			boolean countMatches = referenceSet.size() == actualProgramSet.size();
-			boolean namesMatch = referenceSet.equals(actualProgramSet);
-			String programMatch = (countMatches && namesMatch) ? "Pass" : "Fail";
+			if (!"Medicare".equalsIgnoreCase(key)) {
 
-			report.logTestResult(GroupName, "Program match", programMatch,
-					"Expected Set: " + programsfromExtract + "Actual Set:" + actualProgramSet, key, "");
+				String programMatch;
+				if (referenceSet.isEmpty() && actualProgramSet.size() == 1 && actualProgramSet.contains("")) {
+					programMatch = "Pass";
+				} else {
+					boolean countMatches = referenceSet.size() == actualProgramSet.size();
+					boolean namesMatch = referenceSet.equals(actualProgramSet);
+					programMatch = (countMatches && namesMatch) ? "Pass" : "Fail";
+				}
+
+				report.logTestResult(GroupName, "Program match", programMatch,
+						"Programs In Extract: " + referenceSet + " , Programs In UI:" + actualProgramSet, key, "");
+			}
+			
+			
+			for (Map<String, Object> program : programList) {
+				String programName = program.get("Program").toString().trim();
+
+				String potentialpoints = program.get("EarnedPts") + "/" + program.get("PotentialPts");
+
+				if (!potentialpoints.equals("0.00/0.00")) {
+					if (potentialpoints.equals("-1.0/-1.0")) {
+						report.logTestResult(GroupName, "Incentive Points !=0", "Pass", "NA", key, programName);
+
+					} else {
+						report.logTestResult(GroupName, "Incentive Points !=0", "Pass", potentialpoints, key,
+								programName);
+					}
+
+				} else {
+					report.logTestResult(GroupName, "Incentive Points !=0", "Fail", potentialpoints, key, programName);
+				}
+
+			}
 
 		}
 
@@ -261,30 +281,37 @@ public class MolinaPayment extends PaymentHelper {
 
 			for (Map<String, Object> data : programDataMap.get(Lob)) {
 				if (data.get("Program").equals(Program)) {
-				/*	String actualMatch = ((double) data.get("EarnedPts") == totalMetricActualPay) ? "Pass" : "Fail";
-					String potentialMatch = ((double) data.get("PotentialPts") == totalMetricPotentialPay) ? "Pass"	: "Fail";
 
-					report.logTestResult(GroupName, "Actual pts match", actualMatch,
-							"Registry: " + data.get("EarnedPts") + " , Sum: " + totalMetricActualPay, Lob, Program);
-
-					report.logTestResult(GroupName, "Potential pts match", potentialMatch,
-							"Registry: " + data.get("PotentialPts") + " , Sum: " + totalMetricPotentialPay, Lob,
-							Program);*/
-					
-					
 					boolean actualMatch = ((double) data.get("EarnedPts") == totalMetricActualPay);
-			        boolean potentialMatch = ((double) data.get("PotentialPts") == totalMetricPotentialPay);
+					boolean potentialMatch = ((double) data.get("PotentialPts") == totalMetricPotentialPay);
 
-			        String ptsMatch = (actualMatch && potentialMatch) ? "Pass" : "Fail";
+					String ptsMatch = (actualMatch && potentialMatch) ? "Pass" : "Fail";
 
-					
-					deferredPaymentPrintLogs.add(new String[] { GroupName, "Actual & Potential pts match", ptsMatch,
-			                "Registry Actual: " + data.get("EarnedPts") + " , Sum Actual: " + totalMetricActualPay
-			                + " | Registry Potential: " + data.get("PotentialPts") + " , Sum Potential: " + totalMetricPotentialPay,
-			                Lob, Program});
-					
+					deferredPaymentPrintLogs.add(new String[] { GroupName, "Actual & Potential points match", ptsMatch,
+							"Registry Actual: " + data.get("EarnedPts") + " , Sum Actual: " + totalMetricActualPay
+									+ " | Registry Potential: " + data.get("PotentialPts") + " , Sum Potential: "
+									+ totalMetricPotentialPay,
+							Lob, Program });
+
 				}
 			}
+
+		}
+
+		for (Map.Entry<String, Map<String, Object>> entry : metricDataMap.entrySet()) {
+
+			String metricName = entry.getKey();
+
+			int expectedCoinStack = (int) metricDataMap.get(metricName).get("ExpectedCoinStack");
+			int actualCoinStack = (int) metricDataMap.get(metricName).get("actualCoinStack");
+
+			String coinStackMatch = (expectedCoinStack == actualCoinStack) ? "Pass" : "Fail";
+
+			deferredPaymentPrintLogs.add(new String[] { GroupName, metricName, coinStackMatch,
+					"Expected Coin stack: " + (int) metricDataMap.get(metricName).get("ExpectedCoinStack")
+							+ " , Actual Coin stack: " + (int) metricDataMap.get(metricName).get("actualCoinStack"),
+					Lob, Program });
+
 		}
 
 	}

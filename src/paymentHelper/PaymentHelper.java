@@ -35,7 +35,7 @@ public class PaymentHelper {
 
 	public PaymentHelper(WebDriver driver) throws IOException {
 		this.driver = driver;
-		this.wait = new WebDriverWait(driver, Duration.ofSeconds(40));
+		this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
 		FileInputStream file = new FileInputStream("src/properties/data.properties");
 		properties.load(file);
 	}
@@ -189,10 +189,8 @@ public class PaymentHelper {
 					"arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", coin);
 
 			WebElement metricElement = coin.findElement(By.xpath(properties.getProperty("metric")));
-
 			String metricName = metricElement.getText();
-			//System.out.println(metricName);
-
+			
 			String metricAbbr = coin.findElement(By.xpath(properties.getProperty("metric_abbr"))).getText()
 					.trim().replace("\u00B7", "");
 			
@@ -205,7 +203,6 @@ public class PaymentHelper {
 					.parseDouble(coin.findElement(By.xpath(properties.getProperty("metricActualPay")))
 							.getText().replace("$", " ").replace(",", "").trim());
 
-			// System.out.println(metricActual);
 			Double metricPotential = Double
 					.parseDouble(coin.findElement(By.xpath(properties.getProperty("metricPotentialPay")))
 							.getText().replace("$", " ").replace(",", "").trim());
