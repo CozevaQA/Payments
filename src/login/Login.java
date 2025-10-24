@@ -1,6 +1,7 @@
 package login;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
@@ -30,6 +31,14 @@ public class Login extends PaymentHelper {
 		driver.findElement(By.xpath(properties.getProperty("password"))).sendKeys(System.getenv("CS2Password"));
 		driver.findElement(By.xpath(properties.getProperty("loginButton"))).click();
 		
+		List<WebElement> twoStepVerification = driver.findElements(By.xpath(properties.getProperty("twostepVerification")));
+		if(twoStepVerification.size() == 1) {
+			try {
+				Thread.sleep(60000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 
 		driver.findElement(By.xpath(properties.getProperty("reasonForLogin"))).sendKeys("https://redmine2.cozeva.com/issues/39338");
 

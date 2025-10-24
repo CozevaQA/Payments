@@ -25,6 +25,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import com.opencsv.CSVReader;
+import runner.Main;
 
 public class PaymentHelper {
 	public WebDriver driver;
@@ -36,7 +37,7 @@ public class PaymentHelper {
 	public PaymentHelper(WebDriver driver) throws IOException {
 		this.driver = driver;
 		this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-		FileInputStream file = new FileInputStream("src/properties/data.properties");
+		FileInputStream file = new FileInputStream(Main.configPath);
 		properties.load(file);
 	}
 

@@ -45,7 +45,7 @@ public class HealthnetPayment extends PaymentHelper {
 	List<String[]> deferredPatientLogs = new ArrayList<>();
 	List<String[]> deferredPatientHeaderLogs = new ArrayList<>();
 
-	Map<String, List<String[]>> lobMeasuresfromCSV = loadDataFromCsv("assets/testdata/HnetDataset/Incentive_MY2025.csv");
+	Map<String, List<String[]>> lobMeasuresfromCSV = loadDataFromCsv(properties.getProperty("hnet_Incentive"));
 
 	public void validateHnetPayment(String providerNPI) throws IOException {
 

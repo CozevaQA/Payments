@@ -2,6 +2,7 @@ package runner;
 
 import javax.swing.*;
 import java.awt.event.*;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 import java.awt.Image;
@@ -9,6 +10,8 @@ import java.awt.Image;
 import test.RunTest;
 
 public class Main {
+
+	public static String configPath;
 
 	static Map<String, List<String>> customerPaymentOptions = new HashMap<>();
 	static {
@@ -21,10 +24,22 @@ public class Main {
 
 	public static void main(String[] args) {
 
+		configPath = args[0];
+		
+		Properties properties = new Properties();
+		try (FileInputStream fis = new FileInputStream(configPath)) {
+			properties.load(fis);
+		} catch (IOException e) {
+			System.out.println("Could not load config file: " + e.getMessage());
+			return;
+		}
+		
+		String logoPath = properties.getProperty("logo");
+
 		JFrame frame = new JFrame("Select Customer and Payment Method");
 
 		try {
-			ImageIcon logoIcon = new ImageIcon("assets/cozeva logo.jpg");
+			ImageIcon logoIcon = new ImageIcon(logoPath);
 			Image logoImage = logoIcon.getImage();
 			frame.setIconImage(logoImage);
 		} catch (Exception e) {
@@ -88,7 +103,7 @@ public class Main {
 				frame.dispose();
 
 				try {
-					RunTest run = new RunTest(env, customer,method);
+					RunTest run = new RunTest(env, customer, method);
 
 					System.out.println("Test execution started for: " + customer + " - " + method + " - " + env);
 
@@ -99,10 +114,10 @@ public class Main {
 					} else if ("Health Net".equals(customer)) {
 						if ("Payment HTML".equalsIgnoreCase(method)) {
 							run.runPaymentHTML();
-						}else if ("Registry".equalsIgnoreCase(method)) {
+						} else if ("Registry".equalsIgnoreCase(method)) {
 							run.runHnet();
 						}
-					}else if ("Molina".equals(customer)) {
+					} else if ("Molina".equals(customer)) {
 						if ("Registry".equalsIgnoreCase(method)) {
 							run.runMolina();
 						}

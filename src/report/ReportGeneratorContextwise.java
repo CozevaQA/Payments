@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
+import runner.Main;
 
 public class ReportGeneratorContextwise {
     private static ReportGeneratorContextwise instance;
@@ -29,7 +30,7 @@ public class ReportGeneratorContextwise {
 
     private ReportGeneratorContextwise() throws IOException {
         initializeStyles();
-        FileInputStream file = new FileInputStream("src/properties/data.properties");
+        FileInputStream file = new FileInputStream(Main.configPath);
         properties.load(file);
     }
 

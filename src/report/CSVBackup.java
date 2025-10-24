@@ -3,6 +3,7 @@ package report;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import runner.Main;
 
 public class CSVBackup {
 
@@ -12,7 +13,7 @@ public class CSVBackup {
 	private static final String TIMESTAMP = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
 
 	public CSVBackup(String customerName, String method) throws IOException {
-		FileInputStream file = new FileInputStream("src/properties/data.properties");
+		FileInputStream file = new FileInputStream(Main.configPath);
 		properties.load(file);
 
 		String folderPath = properties.getProperty("backupFolderPath")+ File.separator + customerName;

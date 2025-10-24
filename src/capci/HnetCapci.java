@@ -39,9 +39,9 @@ public class HnetCapci extends PaymentHelper {
 	}
 
 	Map<String, List<String[]>> lobPatientsfromCSV = loadDataFromCsv(
-			"assets/testdata/HnetCAPCIDataset/CAPCI_2025Patients.csv");
+			properties.getProperty("patientsMap"));
 
-	Map<String, List<String[]>> ageFactors = loadDataFromCsv("assets/testdata/HnetCAPCIDataset/AgeFactor.csv");
+	Map<String, List<String[]>> ageFactors = loadDataFromCsv(properties.getProperty("agefactor"));
 
 	Map<String, Map<String, Object>> practiceDataMap = new LinkedHashMap<>();
 	Map<String, Map<String, Object>> patientDataMap = new LinkedHashMap<>();

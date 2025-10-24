@@ -23,6 +23,7 @@ import paymentHTML.PaymentHTML;
 import paymentHelper.PaymentHelper;
 import report.CSVComparator;
 import report.ReportGeneratorContextwise;
+import runner.Main;
 
 public class RunTest {
 
@@ -33,7 +34,7 @@ public class RunTest {
 	String method;
 
 	public RunTest(String env, String custName,String method) throws IOException {
-		FileInputStream file = new FileInputStream("src/properties/data.properties");
+		FileInputStream file = new FileInputStream(Main.configPath);
 		properties.load(file);
 		this.wait = new WebDriverWait(driver, Duration.ofSeconds(60));
 		Url = properties.getProperty(env);
@@ -44,8 +45,8 @@ public class RunTest {
 	WebDriver driver = DriverSetup.getDriver();
 
 	Login login = new Login(driver);
-	 ReportGeneratorContextwise report = ReportGeneratorContextwise.getInstance();
-	 CSVComparator csv = new CSVComparator();
+	ReportGeneratorContextwise report = ReportGeneratorContextwise.getInstance();
+	CSVComparator csv = new CSVComparator();
 
 	public void runHnetCAPCI() throws IOException {
 
@@ -53,10 +54,8 @@ public class RunTest {
 
 			login.LoginCozeva(Url);
 			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("context"))));
-
-		//	List<String[]> practices = PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/HnetCAPCIDataset/HnetCAPCIPrcticeMap.csv");
 			
-			List<String[]> practices = PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/HnetCAPCIDataset/HnetCAPCIPrcticeMap_PROD_2025.csv");
+			List<String[]> practices = PaymentHelper.loadRegistryLinksFromCsv(properties.getProperty("capciPracticemap"));
 
 			for (String[] practice : practices) {
 
@@ -96,8 +95,7 @@ public class RunTest {
 			login.LoginCozeva(Url);
 			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("context"))));
 
-			List<String[]> providers = PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/HnetDataset/HnetCAPaymentHTML.csv");
-			//List<String[]> providers = PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/HnetDataset/CERT_PaymentHTML_HNETCA.csv");
+			List<String[]> providers = PaymentHelper.loadRegistryLinksFromCsv(properties.getProperty("Hnet_PaymentHTML_providerMap"));
 			
 
 			for (String[] provider : providers) {
@@ -137,8 +135,7 @@ public class RunTest {
 			login.LoginCozeva(Url);
 			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("context"))));
 
-			//List<String[]> providers = PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/HnetDataset/HnetProviderMap.csv");
-			List<String[]> providers = PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/HnetDataset/HNET_MY2025.csv");
+			List<String[]> providers = PaymentHelper.loadRegistryLinksFromCsv(properties.getProperty("hnetProviderMap"));
 
 			for (String[] provider : providers) {
 
@@ -178,7 +175,9 @@ public class RunTest {
 			login.LoginCozeva(Url);
 			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("context"))));
 
-			List<String[]> groups = PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/MolinaDataset/MolinaGroupMap.csv");
+			//List<String[]> groups = PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/MolinaDataset/MolinaGroupMap.csv");
+			
+			List<String[]> groups = PaymentHelper.loadRegistryLinksFromCsv(properties.getProperty("molinaGroupMap"));
 			
 			for (String[] group : groups) {
 				

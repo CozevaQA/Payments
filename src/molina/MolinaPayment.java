@@ -36,7 +36,7 @@ public class MolinaPayment extends PaymentHelper {
 	}
 
 	Map<String, List<String[]>> programDetailsfromCSV = loadDataFromCsv(
-			"assets/testdata/MolinaDataset/MolinaProgramDetails.csv");
+			properties.getProperty("molinaProgramDetails"));
 
 	Map<String, List<Map<String, Object>>> programDataMap = new LinkedHashMap<>();
 	Map<String, Map<String, Object>> metricDataMap = new LinkedHashMap<>();
