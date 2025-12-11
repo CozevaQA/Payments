@@ -19,7 +19,6 @@ public class Main {
 		customerPaymentOptions.put("Health Net (CAPCI)", Collections.singletonList("Registry"));
 		customerPaymentOptions.put("Molina", Collections.singletonList("Registry"));
 		customerPaymentOptions.put("Oasis", Collections.singletonList("Registry"));
-		customerPaymentOptions.put("BND", Collections.singletonList("Payment HTML"));
 	}
 
 	public static void main(String[] args) {

@@ -1,0 +1,53 @@
+Program,County,pts,PMPM
+MCD-IPA ,Riverside,30,10
+MCD-IPA ,Riverside,23,7.5
+MCD-IPA ,Riverside,15,5
+MCD-IPA ,Riverside,8,2.5
+MCD-IPA ,San Bernardino,30,10
+MCD-IPA ,San Bernardino,23,7.5
+MCD-IPA ,San Bernardino,15,5
+MCD-IPA ,San Bernardino,8,2.5
+MCD-IPA ,San Diego,30,4
+MCD-IPA ,San Diego,23,3
+MCD-IPA ,San Diego,15,2
+MCD-IPA ,San Diego,8,1
+MCD-IPA ,Sacramento,30,4
+MCD-IPA ,Sacramento,23,3
+MCD-IPA ,Sacramento,15,2
+MCD-IPA ,Sacramento,8,1
+MCD-FQHC ,Riverside,30,10
+MCD-FQHC ,Riverside,23,7.5
+MCD-FQHC ,Riverside,15,5
+MCD-FQHC ,Riverside,8,2.5
+MCD-FQHC ,San Bernardino,30,10
+MCD-FQHC ,San Bernardino,23,7.5
+MCD-FQHC ,San Bernardino,15,5
+MCD-FQHC ,San Bernardino,8,2.5
+MCD-FQHC ,San Diego,30,4
+MCD-FQHC ,San Diego,23,3
+MCD-FQHC ,San Diego,15,2
+MCD-FQHC ,San Diego,8,1
+MCD-FQHC ,Sacramento,30,4
+MCD-FQHC ,Sacramento,23,3
+MCD-FQHC ,Sacramento,15,2
+MCD-FQHC ,Sacramento,8,1
+MCD-IPA-FQHC ,Riverside,30,10
+MCD-IPA-FQHC ,Riverside,23,7.5
+MCD-IPA-FQHC ,Riverside,15,5
+MCD-IPA-FQHC ,Riverside,8,2.5
+MCD-IPA-FQHC ,San Bernardino,30,10
+MCD-IPA-FQHC ,San Bernardino,23,7.5
+MCD-IPA-FQHC ,San Bernardino,15,5
+MCD-IPA-FQHC ,San Bernardino,8,2.5
+MCD-IPA-FQHC ,San Diego,30,4
+MCD-IPA-FQHC ,San Diego,23,3
+MCD-IPA-FQHC ,San Diego,15,2
+MCD-IPA-FQHC ,San Diego,8,1
+MCD-IPA-FQHC ,Los Angeles,30,4
+MCD-IPA-FQHC ,Los Angeles,23,3
+MCD-IPA-FQHC ,Los Angeles,15,2
+MCD-IPA-FQHC ,Los Angeles,8,1
+MRPL-IPA-FQHC ,NA,12,3
+MRPL-IPA-FQHC ,NA,8,2.25
+MRPL-IPA-FQHC ,NA,5,1.5
+MRPL-IPA-FQHC ,NA,3,0.75

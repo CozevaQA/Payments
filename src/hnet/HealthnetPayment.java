@@ -81,7 +81,19 @@ public class HealthnetPayment extends PaymentHelper {
 				driver.findElement(By.xpath(properties.getProperty("apply"))).click();
 				
 				try {
-					Thread.sleep(7000);
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				
+				driver.findElement(By.xpath(properties.getProperty("filterlist"))).click();
+				driver.findElement(By.xpath(properties.getProperty("hideSubmeasures"))).click();
+				
+				((JavascriptExecutor)driver).executeScript("arguments[0].scrollIntoView(true); arguments[0].click();", driver.findElement(By.xpath(properties.getProperty("applyInFilter"))));
+
+				
+				try {
+					Thread.sleep(5000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -153,18 +165,25 @@ public class HealthnetPayment extends PaymentHelper {
 						String metricAbbr = coin.findElement(By.xpath(properties.getProperty("metric_abbr"))).getText()
 								.trim().replace("\u00B7", "");
 
-						// System.out.println(metricAbbr);
+						 System.out.println(metricAbbr);
+						 
+						 WebElement metricActualelem= wait.until(
+						            ExpectedConditions.visibilityOf(coin.findElement(By.xpath(properties.getProperty("metricActualPay"))))
+								    );
 
 						Double metricActual = Double
-								.parseDouble(coin.findElement(By.xpath(properties.getProperty("metricActualPay")))
-										.getText().replace("$", " ").replace(",", "").trim());
+								.parseDouble(metricActualelem.getText().replace("$", " ").replace(",", "").trim());
 
-						// System.out.println(metricActual);
+						 System.out.println(metricActual);
+						 
+						 WebElement metricPotentialelem= wait.until(
+						            ExpectedConditions.visibilityOf(coin.findElement(By.xpath(properties.getProperty("metricPotentialPay"))))
+								    );
+						 
 						Double metricPotential = Double
-								.parseDouble(coin.findElement(By.xpath(properties.getProperty("metricPotentialPay")))
-										.getText().replace("$", " ").replace(",", "").trim());
+								.parseDouble(metricPotentialelem.getText().replace("$", " ").replace(",", "").trim());
 
-						// System.out.println(metricPotential);
+						 System.out.println(metricPotential);
 						int patientdenom = Integer
 								.parseInt(coin.findElement(By.xpath(properties.getProperty("patientCount"))).getText()
 										.split("/")[1].replace(",", "").trim());
@@ -204,7 +223,7 @@ public class HealthnetPayment extends PaymentHelper {
 						metricDataMap.put(metricName, metricData);
 
 						if (!lobName.equals("ALL") && !payerName.equals("ALL")) {
-							if (patientdenom <= 10) {
+							if (patientdenom <= 10 ) {
 								if (metricDataMap.get(metricName).get("IsMetricPresentInDataset").equals("Yes")) {
 									((JavascriptExecutor) driver).executeScript(
 											"arguments[0].scrollIntoView(true); arguments[0].click();", metricElement);
@@ -221,15 +240,40 @@ public class HealthnetPayment extends PaymentHelper {
 										e.printStackTrace();
 									}
 
-									List<WebElement> patientlist = wait
+									/*List<WebElement> patientlist = wait
 											.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
-													By.xpath(properties.getProperty("msplPatient"))));
+													By.xpath(properties.getProperty("msplPatient"))));*/
+									
+									List<WebElement> patientlist = driver.findElements(By.xpath(properties.getProperty("msplPatient")));
+
 
 									for (WebElement patient : patientlist) {
 										wait.until(ExpectedConditions.invisibilityOfElementLocated(
 												By.xpath(properties.getProperty("ajax_preloader"))));
+										
+									/*	((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", patient);
 
-										patient.click();
+										try {
+									        Thread.sleep(100); 
+									    } catch (InterruptedException e) {
+									        e.printStackTrace();
+									    }
+										
+										//patient.click();
+										wait.until(ExpectedConditions.elementToBeClickable(patient)).click();*/
+										
+										 try {
+										        wait.until(ExpectedConditions.elementToBeClickable(patient)).click();
+										    } catch (Exception e) {
+										        ((JavascriptExecutor) driver)
+										            .executeScript("arguments[0].scrollIntoView({behavior:'smooth', block:'center'});", patient);
+
+										        try {
+										            Thread.sleep(200); 
+										        } catch (InterruptedException ex) {}
+
+										        wait.until(ExpectedConditions.elementToBeClickable(patient)).click();
+										    }
 										switchToNewTab();
 
 										List<WebElement> incentives = new ArrayList<>();
@@ -256,17 +300,30 @@ public class HealthnetPayment extends PaymentHelper {
 											String patientCozevaID = driver
 													.findElement(By.xpath(properties.getProperty("cozevaID")))
 													.getText();
+				
 											WebElement incentiveElement = incentives.get(0);
-											String dataAjaxData = incentiveElement.getDomAttribute("data-ajax-data")
+											/*String dataAjaxData = incentiveElement.getAttribute("data-ajax-data")
 													.replace("&quot;", "\"");
 											JSONObject jsonData = new JSONObject(dataAjaxData);
 											double actualPayInPatientDashboard = Double.parseDouble(jsonData
 													.getString("pay_amount").replace("$", "").replace(",", "").trim());
 											double potentialPayInPatientDashboard = Double
 													.parseDouble(jsonData.getString("potential_pay").replace("$", "")
-															.replace(",", "").trim());
-											// System.out.println(actualPayInPatientDashboard);
-											// System.out.println(potentialPayInPatientDashboard);
+															.replace(",", "").trim());*/
+											String incentiveText = incentiveElement.getText().replace("check_circle", "").trim();
+											
+											double actualPayInPatientDashboard = 0.0;
+										    double potentialPayInPatientDashboard = 0.0;
+										    
+										    if (incentiveText.contains("/")) {
+										        String[] parts = incentiveText.split("/");
+										        actualPayInPatientDashboard = Double.parseDouble(parts[0].replace("$", "").replace(",", ""));
+										        potentialPayInPatientDashboard = Double.parseDouble(parts[1].replace("$", "").replace(",", ""));
+										    } else {
+										        actualPayInPatientDashboard = Double.parseDouble(incentiveText.replace("$", "").replace(",", ""));
+										        potentialPayInPatientDashboard = actualPayInPatientDashboard;
+										    }
+											
 
 											double totalActualPay = 0.0;
 											double totalPotentialPay = 0.0;
@@ -283,25 +340,26 @@ public class HealthnetPayment extends PaymentHelper {
 													By.xpath("//span[contains(@class, 'incentive pts')]"));
 
 											for (WebElement incentive : allIncentives) {
-												String dataAjax = incentive.getDomAttribute("data-ajax-data");
+												String incentivedata = incentive.getText().replace("check_circle", "").trim();
 
-												if (dataAjax != null && !dataAjax.isEmpty()) {
+												if (incentivedata != null && !incentivedata.isEmpty()) {
 
-													dataAjax = dataAjax.replace("&quot;", "\"");
+											        double allactualPay = 0.0;
+											        double allpotentialPay = 0.0;
 
-													JSONObject json = new JSONObject(dataAjax);
+											        if (incentivedata.contains("/")) {
+											            String[] parts = incentivedata.split("/");
+											            allactualPay = Double.parseDouble(parts[0].replace("$", "").replace(",", ""));
+											            allpotentialPay = Double.parseDouble(parts[1].replace("$", "").replace(",", ""));
+											        } else {
+											            allactualPay = Double.parseDouble(incentivedata.replace("$", "").replace(",", ""));
+											            allpotentialPay = allactualPay;
+											        }
 
-													double allactualPay = Double
-															.parseDouble(json.getString("pay_amount").replace("$", "")
-																	.replace(",", "").trim());
-													double allpotentialPay = Double
-															.parseDouble(json.getString("potential_pay")
-																	.replace("$", "").replace(",", "").trim());
-
-													totalActualPay += allactualPay;
-													totalPotentialPay += allpotentialPay;
-
-												}
+											        totalActualPay += allactualPay;
+											        totalPotentialPay += allpotentialPay;
+											    }
+												
 											}
 
 											Map<String, Object> patientData = Map.of("MetricName", patientCozevaID,

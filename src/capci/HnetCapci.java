@@ -72,6 +72,7 @@ public class HnetCapci extends PaymentHelper {
 			// String patientDashboard = Url + patient[3];
 			// ((JavascriptExecutor) driver).executeScript("window.open(arguments[0])",
 			// patientDashboard);
+			System.out.println(patient[2]);
 			globalSearch(patient[2]);
 			switchToNewTab();
 
@@ -83,12 +84,18 @@ public class HnetCapci extends PaymentHelper {
 			
 			  WebElement dobElement = wait.until(
 			  ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty
-			  ("patient_dob")))); String dobStr = dobElement.getText().trim();
+			  ("patient_dob")))); 
+			  String dobStr = dobElement.getText().trim();
 			  
-			  //calculate age as of 01-Dec-2024 
+			  //1st day of attribution month
 			  DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy"); 
 			  LocalDate dob =LocalDate.parse(dobStr, formatter); 
-			  LocalDate referenceDate =LocalDate.of(2025, 9, 2); 
+			  //LocalDate referenceDate =LocalDate.of(2025, 11, 19);
+			  //LocalDate referenceDate =LocalDate.of(2025, 9, 1); 
+			  
+			  String refDateStr = properties.getProperty("referenceDate");
+
+			  LocalDate referenceDate = LocalDate.parse(refDateStr, formatter);
 			  int age = Period.between(dob,referenceDate).getYears();
 			 
 
@@ -148,6 +155,7 @@ public class HnetCapci extends PaymentHelper {
 		}
 
 		double roundedIncentive = Math.round(totalIncentive * 100.0) / 100.0;
+		//double roundedIncentive = Math.round(totalIncentive * 10.0) / 10.0;
 
 		String earnedAndPotentialMatch = (double) practiceDataMap.get(practice)
 				.get("EarnPay") == (double) practiceDataMap.get(practice).get("PotentialPay") ? "Pass" : "Fail";
@@ -164,7 +172,7 @@ public class HnetCapci extends PaymentHelper {
 	}
 
 	public void writePatientTableToReport(String practice) {
-		List<String> headers = Arrays.asList("Patient Id", /* "Gender", "Age", */ "Age Factor", "Risk Factor",
+		List<String> headers = Arrays.asList("Cozeva Id", /* "Gender", "Age", */ "Age Factor", "Risk Factor",
 				"Incentive");
 		List<List<String>> patientRows = new ArrayList<>();
 

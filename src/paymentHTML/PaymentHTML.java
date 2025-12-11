@@ -9,9 +9,11 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -39,17 +41,14 @@ public class PaymentHTML extends PaymentHelper {
 		this.csv = new CSVBackup(customer, method);
 	}
 
-	Map<String, Map<String, Object>> paymentDataMap = new HashMap<>();
-	Map<String, Map<String, Object>> programDataMap = new HashMap<>();
+	Map<String, List<Map<String, Object>>> fileNamesMap = new LinkedHashMap<>();
+	Map<String, Map<String, Object>> paymentDataMap = new LinkedHashMap<>();
+	Map<String, Map<String, Object>> programDataMap = new LinkedHashMap<>();
 	List<List<String>> backupRows = new ArrayList<>();
+	List<String[]> deferredPaymentPrintLogs = new ArrayList<>();
 
 	public void validatePaymentHTML(String NPI) {
-
-		WebElement contextElement = wait
-				.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("context"))));
-		String context = contextElement.getText();
-
-		List<WebElement> quarters = new ArrayList<>();
+		List<WebElement> years = new ArrayList<>();
 
 		try {
 
@@ -58,10 +57,10 @@ public class PaymentHTML extends PaymentHelper {
 			wait.until(
 					ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("reportInSidebar"))))
 					.click();
-			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("paymentHTML"))))
-					.click();
+			wait.until(ExpectedConditions
+					.visibilityOfElementLocated(By.xpath(properties.getProperty("cozevaPaymentReports")))).click();
 		} catch (Exception e) {
-			report.logTestResult(context, "Navigation to Payment HTML Page", "Fail", e.getMessage(), "");
+			report.logTestResult(NPI, "Navigation to Payments Reports Page", "Fail", e.getMessage(), "");
 			return;
 		}
 		switchToNewTab();
@@ -69,220 +68,303 @@ public class PaymentHTML extends PaymentHelper {
 		try {
 			wait.until(ExpectedConditions
 					.visibilityOfElementLocated(By.xpath(properties.getProperty("paymentHTMLDropdown")))).click();
-			quarters = driver.findElements(By.xpath(properties.getProperty("quarters")));
+			years = driver.findElements(By.xpath(properties.getProperty("yearDropdown")));
 		} catch (Exception e) {
-			report.logTestResult(context, "Payment HTML Dropdown", "Fail", e.getMessage(), "");
+			report.logTestResult(NPI, "Payments Reports Dropdown", "Fail", e.getMessage(), "");
 			return;
 		}
-		// List<WebElement> quarters =
-		// driver.findElements(By.xpath(properties.getProperty("quarters")));
 
-		if (quarters.size() == 0) {
-			String noQuarter = driver.findElement(By.xpath(properties.getProperty("noQuarter"))).getText();
-			if (noQuarter.equals("Choose your option")) {
-				System.out.println("❌ No quarters available for provider: " + NPI);
-				report.logTestResult(context, "No Quarter Found", "Fail", "Dropdown only shows 'Choose your option'",
-						"NA");
-
-				List<String> backupRow = Arrays.asList(context, "No Quarters", "No Programs", "NA", "NA", "NA", "NA");
-				backupRows.add(backupRow);
-				takeDataForBackup();
-				return;
-			}
+		if (years.size() == 0) {
+			report.logTestResult(NPI, "Payments Reports Dropdown", "Fail", "Dropdown is blank", " ");
+			return;
+		} else if (years.size() == 1 && "Choose your option".equals(years.get(0).getText())) {
+			report.logTestResult(NPI, "Payments Reports Dropdown", "Pass", "No Data Available", " ");
+			List<String> backupRow = Arrays.asList(NPI, "No Quarters", "No Programs", "NA", "NA", "NA", "NA");
+			backupRows.add(backupRow);
+			takeDataForBackup();
+			return;
+		} else {
+			report.logTestResult(NPI, "Payments Reports Dropdown", "Pass",
+					"Year: " + years.stream().map(WebElement::getText).collect(Collectors.joining(", ")), " ");
 		}
+
 		wait.until(
 				ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("paymentHTMLDropdown"))))
 				.click();
 
-		for (int i = 0; i < quarters.size(); i++) {
+		for (int i = 0; i < years.size(); i++) {
 			wait.until(ExpectedConditions
 					.visibilityOfElementLocated(By.xpath(properties.getProperty("paymentHTMLDropdown")))).click();
 
 			try {
-				Thread.sleep(3000);
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-			quarters = wait.until(
-					ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath(properties.getProperty("quarters"))));
 
-			WebElement quarter = quarters.get(i);
-			String quarterText = quarter.getText();
-			String formattedQuarter = quarterText.replace(" ", "_");
+			years = driver.findElements(By.xpath(properties.getProperty("yearDropdown")));
+			String year = years.get(i).getText();
+			years.get(i).click();
+			System.out.println(year);
 
-			quarter.click();
-
-			String provider = wait
-					.until(ExpectedConditions.visibilityOfElementLocated(
-							By.xpath(String.format(properties.getProperty("providerName"), formattedQuarter))))
-					.getText();
-
-			takeScreenshot(customer);
+			List<Map<String, Object>> fileNameDataList = new ArrayList<>();
 			
+			 /* List<WebElement> paymentReport = driver
+			  .findElements(By.xpath(properties.getProperty("paymentReportTable")));*/
+			List<WebElement> paymentReport = wait.until(
+				    ExpectedConditions.visibilityOfAllElementsLocatedBy(
+				        By.xpath(properties.getProperty("paymentReportTable"))
+				    )
+				);
 			
-			
-		
+			System.out.println("No. of reports: " +paymentReport.size());
 
-			Map<String, Object> quarterData = new HashMap<>();
-			List<String> programNames = new ArrayList<>();
+			for (int k = 0; k < paymentReport.size(); k++) {
 
-			// Selected Quarter
-			String MY = quarterText.split(" ")[0];
-			String q = quarterText.split(" ")[1];
+				paymentReport = driver.findElements(By.xpath(properties.getProperty("paymentReportTable")));
+				WebElement currentRow = paymentReport.get(k);
 
-			if (driver
-					.findElement(
-							By.xpath(String.format(properties.getProperty("programSummaryHeader"), formattedQuarter)))
-					.getText().contains(MY)
-					&& driver
-							.findElement(By.xpath(
-									String.format(properties.getProperty("amountPaidInQuarter"), formattedQuarter)))
-							.getText().contains(q)) {
-				quarterData.put("displayedSelectedQuarter", "Pass");
-			} else {
-				quarterData.put("displayedSelectedQuarter", "Fail");
-			}
+				WebElement fileLink = currentRow.findElement(By.xpath(properties.getProperty("filenames")));
+				String fileName = fileLink.getText();
+				System.out.println(fileName);
 
-			// ePaymentEligibility
-			String ePaymentEligibility = wait
-					.until(ExpectedConditions.visibilityOfElementLocated(
-							By.xpath(String.format(properties.getProperty("ePaymentSignedUp"), formattedQuarter))))
-					.getText();
-			quarterData.put("ePaymentEligibility", ePaymentEligibility);
+				String[] parts = fileName.split(" ");
+				String quarterText = String.join(" ", Arrays.copyOfRange(parts, parts.length - 2, parts.length));
+				String formattedQuarter = quarterText.replace(" ", "_");
 
-			// programNames
-			List<WebElement> programElements = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
-					By.xpath(String.format(properties.getProperty("programsForePayments"), formattedQuarter))));
+				int downloads = Integer
+						.parseInt(currentRow.findElement(By.xpath(properties.getProperty("downloads"))).getText());
 
-			for (WebElement el : programElements) {
-				String[] words = el.getText().trim().split(" ");
-				programNames.add(words[words.length - 1]);
-			}
-			quarterData.put("programNames", programNames);
+				Map<String, Object> fileNameData = new LinkedHashMap<>();
+				fileNameData.put("fileName", fileName);
+				fileNameData.put("downloads", downloads);
+				fileNameDataList.add(fileNameData);
+				fileNamesMap.put(year, fileNameDataList);
 
-			// numberOfIndividualProgramShown
-			int numberOfIndividualProgramShown = driver
-					.findElements(By.xpath(
-							String.format(properties.getProperty("numberOfIndividualProgram"), formattedQuarter)))
-					.size();
-			quarterData.put("numberOfIndividualProgramShown", numberOfIndividualProgramShown);
+				wait.until(ExpectedConditions.elementToBeClickable(fileLink));
+				fileLink.click();
 
-			// AmountsInProgramSummary
-			List<WebElement> amountsInProgramSummary = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
-					By.xpath(String.format(properties.getProperty("amountsInProgramSummary"), formattedQuarter))));
+				switchToNewTab();
 
-			String[] totalAmountKeys = { "Earned Amount", "Previous ePayments", "Previous manual payments",
-					"Amount Paid in Quarter" };
-
-			for (int j = 0; j < amountsInProgramSummary.size(); j++) {
-				Double value = Double
-						.parseDouble(amountsInProgramSummary.get(j).getText().replace("$", "").replace(",", ""));
-				quarterData.put(totalAmountKeys[j], value);
-			}
-			
-			
-			
-			try {
-				wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("download"))))
-						.click();
-				wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("export"))))
-						.click();
-				Thread.sleep(3000);
-				String[] files = validateDownloadedCSVBySize(NPI, formattedQuarter);
-				quarterData.put("exportedFileName", files[0]);
-				quarterData.put("exportedFileStatus", files[1]);
-				quarterData.put("exportedFileDetails", "");
-			} catch (Exception e) {
-				quarterData.put("exportedFileName", "");
-				quarterData.put("exportedFileStatus", "Fail");
-				quarterData.put("exportedFileDetails", e.getMessage());
-			}
-
-			
-		/*	try {
-	            FullPageScreenshotBothAxes.waitForPageReady(driver, 30000);
-	            String scrollbarid = "payment_html_"+formattedQuarter;
-
-	            FullPageScreenshotBothAxes.takeScrollableElementScreenshot(
-	                    driver,
-	                    scrollbarid,
-	                    "C:\\HNET_Migration_SS\\PaymentHTML\\"+NPI.trim()+"_"+quarterText.trim()+".png",
-	                    100,
-	                    60,
-	                    300
-	            );
-
-	            System.out.println("Processing complete.");
-	        } catch(Exception e) {
-	        	System.out.println(e);
-	        }*/
-
-			paymentDataMap.put(quarterText, quarterData);
-
-			List<String> backupRow = Arrays.asList(NPI, quarterText,
-					String.join(";", (List<String>) paymentDataMap.get(quarterText).get("programNames")),
-					String.valueOf(paymentDataMap.get(quarterText).get("Earned Amount")),
-					String.valueOf(paymentDataMap.get(quarterText).get("Previous ePayments")),
-					String.valueOf(paymentDataMap.get(quarterText).get("Previous manual payments")),
-					String.valueOf(paymentDataMap.get(quarterText).get("Amount Paid in Quarter")));
-			backupRows.add(backupRow);
-
-			List<WebElement> individualProgramHeaderElements = wait
-					.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath(
-							String.format(properties.getProperty("individualProgramHeader"), formattedQuarter))));
-
-			for (WebElement el : individualProgramHeaderElements) {
-				Map<String, Object> programData = new HashMap<>();
-
-				WebElement programElement = wait.until(ExpectedConditions.visibilityOf(el));
-				String program = programElement.getText();
-
-				if (program != null && program.toLowerCase().contains("program")) {
-					program = program.replaceAll("(?i)program", " ").trim();
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
 
-				WebElement individualProgram = wait.until(ExpectedConditions.presenceOfElementLocated(By
-						.xpath(String.format(properties.getProperty("individualProgram"), program, formattedQuarter))));
+				String provider = wait
+						.until(ExpectedConditions.visibilityOfElementLocated(
+								By.xpath(String.format(properties.getProperty("providerName"), formattedQuarter))))
+						.getText();
 
-				// AddMeasureNames
-				List<WebElement> measureElements = individualProgram
-						.findElements(By.xpath(properties.getProperty("measureName")));
-				List<String> measureList = new ArrayList<>();
-				for (WebElement measure : measureElements) {
-					measureList.add(measure.getText());
+				takeScreenshot(customer);
+
+				Map<String, Object> quarterData = new HashMap<>();
+				List<String> programNames = new ArrayList<>();
+
+				// Selected Quarter
+				String MY = quarterText.split(" ")[0];
+				String q = quarterText.split(" ")[1];
+
+				if (driver
+						.findElement(By
+								.xpath(String.format(properties.getProperty("programSummaryHeader"), formattedQuarter)))
+						.getText().contains(MY)
+						&& driver
+								.findElement(By.xpath(
+										String.format(properties.getProperty("amountPaidInQuarter"), formattedQuarter)))
+								.getText().contains(q)
+						&& driver.findElement(By.xpath(properties.getProperty("cardHeader"))).getText()
+								.equals(quarterText)) {
+					quarterData.put("displayedSelectedQuarter", "Pass");
+				} else {
+					quarterData.put("displayedSelectedQuarter", "Fail");
 				}
-				programData.put("measures", measureList);
 
-				// AddIncentivePerMeasure
-				List<WebElement> incentiveElements = individualProgram
-						.findElements(By.xpath(properties.getProperty("incentivePermeasure")));
-				List<Double> incentiveList = new ArrayList<>();
-				for (WebElement incentive : incentiveElements) {
-					incentiveList.add(Double.parseDouble(incentive.getText().replace("$", "").replace(",", "")));
+				// ePaymentEligibility
+				String ePaymentEligibility = wait
+						.until(ExpectedConditions.visibilityOfElementLocated(
+								By.xpath(String.format(properties.getProperty("ePaymentSignedUp"), formattedQuarter))))
+						.getText();
+				quarterData.put("ePaymentEligibility", ePaymentEligibility);
+
+				// programNames
+				List<WebElement> programElements = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(
+						By.xpath(String.format(properties.getProperty("programsForePayments"), formattedQuarter))));
+
+				for (WebElement el : programElements) {
+					String[] words = el.getText().trim().split(" ");
+					programNames.add(words[words.length - 1]);
 				}
-				programData.put("incentives", incentiveList);
+				quarterData.put("programNames", programNames);
 
-				// AddTotalAmountPerIndividualProgram
-				List<WebElement> totalAmountsPerMeasure = individualProgram
-						.findElements(By.xpath(properties.getProperty("totalAmaountsPerMeasure")));
+				// numberOfIndividualProgramShown
+				int numberOfIndividualProgramShown = driver
+						.findElements(By.xpath(
+								String.format(properties.getProperty("numberOfIndividualProgram"), formattedQuarter)))
+						.size();
+				quarterData.put("numberOfIndividualProgramShown", numberOfIndividualProgramShown);
 
-				for (int j = 0; j < totalAmountsPerMeasure.size(); j++) {
+				// AmountsInProgramSummary
+				List<WebElement> amountsInProgramSummary = wait
+						.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath(
+								String.format(properties.getProperty("amountsInProgramSummary"), formattedQuarter))));
+
+				String[] totalAmountKeys = { "Earned Amount", "Previous ePayments", "Previous manual payments",
+						"Amount Paid in Quarter" };
+
+				for (int j = 0; j < amountsInProgramSummary.size(); j++) {
+					
+					
+					WebElement elem = wait.until(
+				            ExpectedConditions.visibilityOf(amountsInProgramSummary.get(j))
+				    );
 					Double value = Double
-							.parseDouble(totalAmountsPerMeasure.get(j).getText().replace("$", "").replace(",", ""));
-					programData.put(totalAmountKeys[j], value);
-
+							.parseDouble(elem.getText().replace("$", "").replace(",", ""));
+					quarterData.put(totalAmountKeys[j], value);
 				}
 
-				programDataMap.put(program, programData);
+				paymentDataMap.put(quarterText, quarterData);
+				
+				List<String> backupRow = Arrays.asList(NPI, quarterText,
+						String.join(";", (List<String>) paymentDataMap.get(quarterText).get("programNames")),
+						String.valueOf(paymentDataMap.get(quarterText).get("Earned Amount")),
+						String.valueOf(paymentDataMap.get(quarterText).get("Previous ePayments")),
+						String.valueOf(paymentDataMap.get(quarterText).get("Previous manual payments")),
+						String.valueOf(paymentDataMap.get(quarterText).get("Amount Paid in Quarter")));
+				backupRows.add(backupRow);
+
+
+				List<WebElement> individualProgramHeaderElements = wait
+						.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath(
+								String.format(properties.getProperty("individualProgramHeader"), formattedQuarter))));
+
+				for (WebElement el : individualProgramHeaderElements) {
+					Map<String, Object> programData = new HashMap<>();
+
+					WebElement programElement = wait.until(ExpectedConditions.visibilityOf(el));
+					String program = programElement.getText();
+
+					if (program != null && program.toLowerCase().contains("program")) {
+						program = program.replaceAll("(?i)program", " ").trim();
+					}
+
+					WebElement individualProgram = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
+							String.format(properties.getProperty("individualProgram"), program, formattedQuarter))));
+
+					// AddMeasureNames
+					List<WebElement> measureElements = individualProgram
+							.findElements(By.xpath(properties.getProperty("measureName")));
+					List<String> measureList = new ArrayList<>();
+					for (WebElement measure : measureElements) {
+						WebElement elem = wait.until(
+					            ExpectedConditions.visibilityOf(measure)
+					    );
+						measureList.add(elem.getText());
+					}
+					programData.put("measures", measureList);
+
+					// AddIncentivePerMeasure
+					List<WebElement> incentiveElements = individualProgram
+							.findElements(By.xpath(properties.getProperty("incentivePermeasure")));
+					List<Double> incentiveList = new ArrayList<>();
+					for (WebElement incentive : incentiveElements) {
+						WebElement elem = wait.until(
+					            ExpectedConditions.visibilityOf(incentive)
+					    );
+						incentiveList.add(Double.parseDouble(elem.getText().replace("$", "").replace(",", "")));
+					}
+					programData.put("incentives", incentiveList);
+
+					// AddTotalAmountPerIndividualProgram
+					List<WebElement> totalAmountsPerMeasure = individualProgram
+							.findElements(By.xpath(properties.getProperty("totalAmaountsPerMeasure")));
+
+					for (int j = 0; j < totalAmountsPerMeasure.size(); j++) {
+						
+						WebElement elem = wait.until(
+					            ExpectedConditions.visibilityOf(totalAmountsPerMeasure.get(j))
+					    );
+						
+						Double value = Double
+								.parseDouble(elem.getText().replace("$", "").replace(",", ""));
+						programData.put(totalAmountKeys[j], value);
+
+					}
+
+					programDataMap.put(program, programData);
+				}
+				comparePaymentHTML(NPI, quarterText);
+				programDataMap.clear();
+				driver.close();
+				switchToNewTab();
+
+			}
+			takeDataForBackup();
+		}
+
+		validateFileNames(NPI);
+		for (String[] log : deferredPaymentPrintLogs) {
+			report.logTestResult(log[0], log[1], log[2], log[3], log[4]);
+		}
+
+	}
+
+	public void validateFileNames(String NPI) {
+		
+		for (Map.Entry<String, List<Map<String, Object>>> entry : fileNamesMap.entrySet()) {
+			String year = entry.getKey();
+			List<Map<String, Object>> fileList = entry.getValue();
+			
+			String column1 = driver.findElement(By.xpath(properties.getProperty("fileNameColumn"))).getText();
+			String column2 = driver.findElement(By.xpath(properties.getProperty("downloadsColumn"))).getText();
+
+			if (column1.equals("Filename")) {
+				report.logTestResult(NPI, "FileName column presents: "+year, "Pass", "", " ");
+			} else {
+				report.logTestResult(NPI, "FileName column presents: "+year, "Fail", "", " ");
+			}
+			if (column2.equals("Downloads")) {
+				report.logTestResult(NPI, "Downloads column presents: "+year, "Pass", "", " ");
+			} else {
+				report.logTestResult(NPI, "Downloads column presents: "+year, "Fail", "", " ");
 			}
 
-			
 
-			comparePaymentHTML(NPI, quarterText);
-			programDataMap.clear();
+			boolean allQuartersPass = true;
+			boolean allDownloadsPass = true;
+			List<String> mismatchedFiles = new ArrayList<>();
+			StringBuilder downloadsDetails = new StringBuilder();
+
+			for (Map<String, Object> fileData : fileList) {
+				String fileName = (String) fileData.get("fileName");
+				int downloads = (int) fileData.get("downloads");
+				downloadsDetails.append(fileName).append(": ").append(downloads).append(", ");
+
+				if (!fileName.contains(year)) {
+					allQuartersPass = false;
+					mismatchedFiles.add(fileName);
+				}
+				if (downloads < 0) {
+					allDownloadsPass = false;
+				}
+			}
+
+			if (allQuartersPass) {
+				report.logTestResult(NPI, "Quarter Reports displayed in FileName column for: " + year, "Pass",
+						"All filenames match the year", " ");
+			} else {
+				report.logTestResult(NPI, "Quarter Reports displayed in FileName column for: " + year, "Fail",
+						"One or more filenames do not match the year: " + String.join(", ", mismatchedFiles), " ");
+			}
+
+			if (allDownloadsPass) {
+				report.logTestResult(NPI, "Downloads values: " + year, "Pass", downloadsDetails.toString(), " ");
+			} else {
+				report.logTestResult(NPI, "Downloads values: " + year, "Fail",
+						downloadsDetails.toString(), " ");
+			}
 		}
-		takeDataForBackup();
-
 	}
 
 	public void comparePaymentHTML(String provider, String quarter) {
@@ -355,85 +437,42 @@ public class PaymentHTML extends PaymentHelper {
 		String AmaountPaidInQuarterMatches = (double) paymentDataMap.get(quarter)
 				.get("Amount Paid in Quarter") == totalAmaountPaidInQuarter ? "Pass" : "Fail";
 
-		report.logTestResult(provider, "Displayed Selected Quarter",
-				paymentDataMap.get(quarter).get("displayedSelectedQuarter").toString(), "", quarter);
-		report.logTestResult(provider, "E-Payment Eligibility", matchePaymentEligibility,
-				"E-Payment Eligibility: " + paymentDataMap.get(quarter).get("ePaymentEligibility"), quarter);
-		report.logTestResult(provider, "Program Match", programMatch,
-				"Overall: " + expectedProgramSet + " , Individual: " + actualProgramSet, quarter);
-		report.logTestResult(provider, "Earned Amount Match", earnedAmountMatches, "Overall Earned Amount: "
-				+ paymentDataMap.get(quarter).get("Earned Amount") + " " + earnedDetails.toString(), quarter);
-		report.logTestResult(provider, "Previous E-payment Match", previousEpaymentMatches,
-				"Overall Previous E-Payments: " + paymentDataMap.get(quarter).get("Previous ePayments") + " "
-						+ previousEPaymentDetails.toString(),
-				quarter);
-		report.logTestResult(provider, "Manual Previous E-payment Match", ManualpreviousEpaymentMatches,
-				"Overall Previous manual payments: " + paymentDataMap.get(quarter).get("Previous manual payments") + " "
-						+ manualPreviousDetails.toString(),
-				quarter);
-		report.logTestResult(provider, "Amount Paid In Quarter Match", AmaountPaidInQuarterMatches,
-				"Overall Amount Paid in Quarter: " + paymentDataMap.get(quarter).get("Amount Paid in Quarter") + " "
-						+ paidInQuarterDetails.toString(),
-				quarter);
-		report.logTestResult(provider, "Incentive>=0", isIncentivePositive, incentivesDetails.toString(), quarter);
-		report.logTestResult(provider, "Export Member-Level Report",
-				(String) paymentDataMap.get(quarter).get("exportedFileStatus"),
-				(String) paymentDataMap.get(quarter).get("exportedFileName") + " , "
-						+ (String) paymentDataMap.get(quarter).get("exportedFileDetails"),
-				quarter);
-		// report.logTestResult(provider, "Print to
-		// PDF",(String)paymentDataMap.get(quarter).get("PrintToPDFClickStatus"),(String)paymentDataMap.get(quarter).get("PrintToPDFClickDetails"),quarter);
+		deferredPaymentPrintLogs.add(new String[] { provider, "Displayed Selected Quarter",
+				paymentDataMap.get(quarter).get("displayedSelectedQuarter").toString(), "", quarter });
+
+		deferredPaymentPrintLogs.add(new String[] { provider, "E-Payment Eligibility", matchePaymentEligibility,
+				"E-Payment Eligibility: " + paymentDataMap.get(quarter).get("ePaymentEligibility"), quarter });
+
+		deferredPaymentPrintLogs.add(new String[] { provider, "Program Match", programMatch,
+				"Overall: " + expectedProgramSet + " , Individual: " + actualProgramSet, quarter });
+
+		deferredPaymentPrintLogs.add(new String[] { provider, "Earned Amount Match", earnedAmountMatches,
+				"Overall Earned Amount: " + paymentDataMap.get(quarter).get("Earned Amount") + " " + earnedDetails,
+				quarter });
+
+		deferredPaymentPrintLogs.add(new String[] {
+				provider, "Previous E-payment Match", previousEpaymentMatches, "Overall Previous E-Payments: "
+						+ paymentDataMap.get(quarter).get("Previous ePayments") + " " + previousEPaymentDetails,
+				quarter });
+
+		deferredPaymentPrintLogs.add(new String[] { provider, "Manual Previous E-payment Match",
+				ManualpreviousEpaymentMatches, "Overall Previous manual payments: "
+						+ paymentDataMap.get(quarter).get("Previous manual payments") + " " + manualPreviousDetails,
+				quarter });
+
+		deferredPaymentPrintLogs.add(new String[] { provider, "Amount Paid In Quarter Match",
+				AmaountPaidInQuarterMatches, "Overall Amount Paid in Quarter: "
+						+ paymentDataMap.get(quarter).get("Amount Paid in Quarter") + " " + paidInQuarterDetails,
+				quarter });
+
+		deferredPaymentPrintLogs.add(
+				new String[] { provider, "Incentive>=0", isIncentivePositive, incentivesDetails.toString(), quarter });
 
 	}
-
+	
 	public void takeDataForBackup() {
 		List<String> headers = Arrays.asList("Provider", "Quarter", "Program Names", "Earned Amount",
 				"Previous E-Payments", "Previous manual payments", "Amount Paid in Quarter");
 		csv.takeBackup(headers, backupRows);
 	}
-
-	public String[] validateDownloadedCSVBySize(String NPI, String Quarter) {
-		String baseFileName = Quarter + "_" + NPI + "_Member_Level_Report";
-		String downloadDir = properties.getProperty("downloadDir");
-		;
-		File dir = new File(downloadDir);
-
-		if (!dir.exists()) {
-			dir.mkdirs();
-		}
-
-		String todayDate = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
-
-		File[] matchingFiles = dir.listFiles((d, name) -> {
-			if (name.toLowerCase().startsWith(baseFileName.toLowerCase()) && name.toLowerCase().endsWith(".csv")) {
-				File file = new File(d, name);
-				String fileModDate = new SimpleDateFormat("yyyy-MM-dd").format(new Date(file.lastModified()));
-				return todayDate.equals(fileModDate);
-			}
-			return false;
-		});
-
-		if (matchingFiles == null || matchingFiles.length == 0) {
-			System.out.println("No report file found.");
-			return new String[] { "No report file found", "Fail" };
-		}
-
-		Arrays.sort(matchingFiles, Comparator.comparingLong(File::lastModified).reversed());
-
-		File latestFile = matchingFiles[0];
-
-		String fileName = latestFile.getName();
-		long fileSize = latestFile.length() / 1024;
-
-		String fileHasContent = "";
-
-		if (fileSize > 0) {
-			fileHasContent = "Pass";
-		} else {
-			fileHasContent = "Fail";
-		}
-
-		return new String[] { fileName + " ,Filesize: " + fileSize + " kb", fileHasContent };
-	}
-
 }

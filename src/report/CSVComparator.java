@@ -53,8 +53,8 @@ public class CSVComparator {
                 }
             }
 
-            if (currentFile == null || prevFile == null) {
-                System.err.println("Could not find both current and previous CSV files.");
+            if (prevFile == null) {
+                System.err.println("Not enough CSV files to compare.");
                 return;
             }
 

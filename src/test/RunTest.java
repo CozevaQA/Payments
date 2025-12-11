@@ -19,6 +19,7 @@ import config.DriverSetup;
 import hnet.HealthnetPayment;
 import login.Login;
 import molina.MolinaPayment;
+import molina.MolinaPayment_new;
 import paymentHTML.PaymentHTML;
 import paymentHelper.PaymentHelper;
 import report.CSVComparator;
@@ -36,7 +37,8 @@ public class RunTest {
 	public RunTest(String env, String custName,String method) throws IOException {
 		FileInputStream file = new FileInputStream(Main.configPath);
 		properties.load(file);
-		this.wait = new WebDriverWait(driver, Duration.ofSeconds(60));
+		//this.wait = new WebDriverWait(driver, Duration.ofSeconds(60));
+		this.wait = new WebDriverWait(driver, 30);
 		Url = properties.getProperty(env);
 		customer = custName;
 		this.method = method;
@@ -184,7 +186,7 @@ public class RunTest {
 				String groupName = group[0];
 				String registryLink = Url + group[1];
 				
-				MolinaPayment molinaPayment = new MolinaPayment(driver,customer,method);
+				MolinaPayment_new molinaPayment = new MolinaPayment_new(driver,customer,method);
 				
 				((JavascriptExecutor) driver).executeScript("window.open(arguments[0])", registryLink);
 				
