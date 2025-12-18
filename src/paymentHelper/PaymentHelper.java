@@ -13,12 +13,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
@@ -64,6 +66,10 @@ public class PaymentHelper {
 			driver.close();
 		}
 		driver.switchTo().window(mainTab);
+	}
+
+	public boolean isElementPresent(By locator) {
+		return !driver.findElements(locator).isEmpty();
 	}
 
 	public void takeScreenshot(String customerName) {
@@ -189,6 +195,7 @@ public class PaymentHelper {
 		for (int i = 0; i < coinCount; i++) {
 			List<WebElement> coinContainer = driver.findElements(By.xpath(properties.getProperty("coinContainer")));
 			WebElement coin = coinContainer.get(i);
+
 			((JavascriptExecutor) driver)
 					.executeScript("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", coin);
 
@@ -197,7 +204,7 @@ public class PaymentHelper {
 
 			String metricAbbr = coin.findElement(By.xpath(properties.getProperty("metric_abbr"))).getText().trim()
 					.replace("\u00B7", "");
-
+			System.out.println(metricAbbr);
 			int patientDenom = Integer
 					.parseInt(coin.findElement(By.xpath(properties.getProperty("patientCount"))).getText().split("/")[1]
 							.replace(",", "").trim());
@@ -218,16 +225,58 @@ public class PaymentHelper {
 			List<String[]> measuresIncentive = lobMeasuresfromCSV.get(context);
 			String ifMeasureNamePresentInDataset = "No";
 			double incentiveFrmDataset = 0;
+			List<Double[]> performancePercentage = new ArrayList<>();
 
 			if (measuresIncentive != null) {
 				for (String[] measure : measuresIncentive) {
 					if (metricAbbr.trim().equalsIgnoreCase(measure[0].trim())) {
 						ifMeasureNamePresentInDataset = "Yes";
-						incentiveFrmDataset = Double.parseDouble(measure[1]);
-						break;
+						// incentiveFrmDataset = Double.parseDouble(measure[1]);
+						// break;
+						double currentIncentivePoint = Double.parseDouble(measure[1]);
+						double performance = Double.parseDouble(measure[2]);
+
+						if (currentIncentivePoint > incentiveFrmDataset) {
+							incentiveFrmDataset = currentIncentivePoint;
+						}
+
+						performancePercentage.add(new Double[] { currentIncentivePoint, performance });
+
 					}
 
 				}
+			}
+
+			WebElement coinStackBar = coin.findElement(By.xpath(properties.getProperty("fullCoinStackBar")));
+
+			String tooltipPresent = "Yes";
+			StringBuilder pair = new StringBuilder();
+
+			if (actualCoinStack < 6 && (metricActual != metricPotential)) {
+				Actions actions = new Actions(driver);
+				actions.moveToElement(coinStackBar).perform();
+
+				for (Double[] data : performancePercentage) {
+					System.out.println(metricActual);
+					System.out.println(data[0]);
+
+					if (!metricActual.equals(data[0])) {
+						By tooltip = By
+								.xpath(String.format(properties.getProperty("tooltip"), data[0].intValue(), data[1]));
+						pair.append(data[0]).append(":").append(data[1]).append(", ");
+
+						System.out.println(pair);
+
+						if (!isElementPresent(tooltip)) {
+							System.out.println("Missing element for data: " + data[0] + ", " + data[1]);
+							tooltipPresent = "No";
+						}
+
+					}
+				}
+
+			} else {
+				tooltipPresent = "NA";
 			}
 
 			Map<String, Object> metricData = new HashMap<>();
@@ -240,6 +289,8 @@ public class PaymentHelper {
 			metricData.put("denominator", patientDenom);
 			metricData.put("IsMetricPresentInDataset", ifMeasureNamePresentInDataset);
 			metricData.put("MetricIncentive", incentiveFrmDataset);
+			metricData.put("tooltipPresent", tooltipPresent);
+			metricData.put("pair", pair.toString());
 
 			if ("Molina".equals(customerName)) {
 
@@ -250,99 +301,85 @@ public class PaymentHelper {
 
 		return metricDataMap;
 	}
-	
-	/*public Map<String, Map<String, Object>> getMetricIncentiveDetails(
-	        String customerName,
-	        String context,
-	        Map<String, List<String[]>> lobMeasuresfromCSV) {
 
-	    int coinCount = driver.findElements(By.xpath(properties.getProperty("coinContainer"))).size();
-
-	    for (int i = 0; i < coinCount; i++) {
-	        List<WebElement> coinContainer = driver.findElements(By.xpath(properties.getProperty("coinContainer")));
-	        WebElement coin = coinContainer.get(i);
-
-	        ((JavascriptExecutor) driver)
-	                .executeScript("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", coin);
-
-	        String metricName = coin.findElement(By.xpath(properties.getProperty("metric"))).getText();
-	        String metricAbbr = coin.findElement(By.xpath(properties.getProperty("metric_abbr")))
-	                .getText().trim().replace("\u00B7", "");
-
-	        int patientDenom = Integer.parseInt(
-	                coin.findElement(By.xpath(properties.getProperty("patientCount")))
-	                        .getText().split("/")[1].replace(",", "").trim()
-	        );
-
-	        Double metricActual = Double.parseDouble(
-	                coin.findElement(By.xpath(properties.getProperty("metricActualPay")))
-	                        .getText().replace("$", " ").replace(",", "").trim()
-	        );
-
-	        Double metricPotential = Double.parseDouble(
-	                coin.findElement(By.xpath(properties.getProperty("metricPotentialPay")))
-	                        .getText().replace("$", " ").replace(",", "").trim()
-	        );
-
-	        List<WebElement> ele = coin.findElements(By.xpath(properties.getProperty("coinStack")));
-	        int expectedCoinStack = calculateCoinStack(metricActual, metricPotential);
-	        int actualCoinStack = ele.size();
-
-	        // ─── Detect hover popup ────────────────────────────────
-	        String hoverPopupState = "No hover popup";
-
-	        if (actualCoinStack < 6 && !ele.isEmpty()) {
-	            try {
-	                Actions actions = new Actions(driver);
-	                actions.moveToElement(ele.get(ele.size() - 1)).perform();
-
-	                // Wait for UI animation/tooltip render
-	                Thread.sleep(500);
-
-	                hoverPopupState = "Hover popup appeared";
-	            } catch (Exception e) {
-	                hoverPopupState = "Hover action failed";
-	            }
-	            System.out.println("Metric: " + metricAbbr + " → " + hoverPopupState);
-	            
-	        }
-	        // ─────────────────────────────────────────────────────────
-
-	        List<String[]> measuresIncentive = lobMeasuresfromCSV.get(context);
-	        String ifMeasurePresent = "No";
-	        double incentiveFrmDataset = 0;
-
-	        if (measuresIncentive != null) {
-	            for (String[] measure : measuresIncentive) {
-	                if (metricAbbr.trim().equalsIgnoreCase(measure[0].trim())) {
-	                    ifMeasurePresent = "Yes";
-	                    incentiveFrmDataset = Double.parseDouble(measure[1]);
-	                    break;
-	                }
-	            }
-	        }
-
-	        Map<String, Object> metricData = new HashMap<>();
-	        metricData.put("MetricName", metricName);
-	        metricData.put("MetricAbbr", metricAbbr);
-	        metricData.put("MetricActualPay", metricActual);
-	        metricData.put("MetricPotentialPay", metricPotential);
-	        metricData.put("ExpectedCoinStack", expectedCoinStack);
-	        metricData.put("actualCoinStack", actualCoinStack);
-	        metricData.put("denominator", patientDenom);
-	        metricData.put("IsMetricPresentInDataset", ifMeasurePresent);
-	        metricData.put("MetricIncentive", incentiveFrmDataset);
-	        metricData.put("HoverPopup", hoverPopupState); // store hover check
-
-	        if ("Molina".equals(customerName)) {
-	            // customer-specific logic
-	        }
-
-	        metricDataMap.put(metricAbbr, metricData);
-	    }
-
-	    return metricDataMap;
-	}*/
+	/*
+	 * public Map<String, Map<String, Object>> getMetricIncentiveDetails( String
+	 * customerName, String context, Map<String, List<String[]>> lobMeasuresfromCSV)
+	 * {
+	 * 
+	 * int coinCount =
+	 * driver.findElements(By.xpath(properties.getProperty("coinContainer"))).size()
+	 * ;
+	 * 
+	 * for (int i = 0; i < coinCount; i++) { List<WebElement> coinContainer =
+	 * driver.findElements(By.xpath(properties.getProperty("coinContainer")));
+	 * WebElement coin = coinContainer.get(i);
+	 * 
+	 * ((JavascriptExecutor) driver)
+	 * .executeScript("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});"
+	 * , coin);
+	 * 
+	 * String metricName =
+	 * coin.findElement(By.xpath(properties.getProperty("metric"))).getText();
+	 * String metricAbbr =
+	 * coin.findElement(By.xpath(properties.getProperty("metric_abbr")))
+	 * .getText().trim().replace("\u00B7", "");
+	 * 
+	 * int patientDenom = Integer.parseInt(
+	 * coin.findElement(By.xpath(properties.getProperty("patientCount")))
+	 * .getText().split("/")[1].replace(",", "").trim() );
+	 * 
+	 * Double metricActual = Double.parseDouble(
+	 * coin.findElement(By.xpath(properties.getProperty("metricActualPay")))
+	 * .getText().replace("$", " ").replace(",", "").trim() );
+	 * 
+	 * Double metricPotential = Double.parseDouble(
+	 * coin.findElement(By.xpath(properties.getProperty("metricPotentialPay")))
+	 * .getText().replace("$", " ").replace(",", "").trim() );
+	 * 
+	 * List<WebElement> ele =
+	 * coin.findElements(By.xpath(properties.getProperty("coinStack"))); int
+	 * expectedCoinStack = calculateCoinStack(metricActual, metricPotential); int
+	 * actualCoinStack = ele.size();
+	 * 
+	 * // ─── Detect hover popup ──────────────────────────────── String
+	 * hoverPopupState = "No hover popup";
+	 * 
+	 * if (actualCoinStack < 6 && !ele.isEmpty()) { try { Actions actions = new
+	 * Actions(driver); actions.moveToElement(ele.get(ele.size() - 1)).perform();
+	 * 
+	 * // Wait for UI animation/tooltip render Thread.sleep(500);
+	 * 
+	 * hoverPopupState = "Hover popup appeared"; } catch (Exception e) {
+	 * hoverPopupState = "Hover action failed"; } System.out.println("Metric: " +
+	 * metricAbbr + " → " + hoverPopupState);
+	 * 
+	 * } // ─────────────────────────────────────────────────────────
+	 * 
+	 * List<String[]> measuresIncentive = lobMeasuresfromCSV.get(context); String
+	 * ifMeasurePresent = "No"; double incentiveFrmDataset = 0;
+	 * 
+	 * if (measuresIncentive != null) { for (String[] measure : measuresIncentive) {
+	 * if (metricAbbr.trim().equalsIgnoreCase(measure[0].trim())) { ifMeasurePresent
+	 * = "Yes"; incentiveFrmDataset = Double.parseDouble(measure[1]); break; } } }
+	 * 
+	 * Map<String, Object> metricData = new HashMap<>();
+	 * metricData.put("MetricName", metricName); metricData.put("MetricAbbr",
+	 * metricAbbr); metricData.put("MetricActualPay", metricActual);
+	 * metricData.put("MetricPotentialPay", metricPotential);
+	 * metricData.put("ExpectedCoinStack", expectedCoinStack);
+	 * metricData.put("actualCoinStack", actualCoinStack);
+	 * metricData.put("denominator", patientDenom);
+	 * metricData.put("IsMetricPresentInDataset", ifMeasurePresent);
+	 * metricData.put("MetricIncentive", incentiveFrmDataset);
+	 * metricData.put("HoverPopup", hoverPopupState); // store hover check
+	 * 
+	 * if ("Molina".equals(customerName)) { // customer-specific logic }
+	 * 
+	 * metricDataMap.put(metricAbbr, metricData); }
+	 * 
+	 * return metricDataMap; }
+	 */
 
 	/*
 	 * public void measureIncentiveInDataset(Map<String, List<String[]>>

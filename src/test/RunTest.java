@@ -200,6 +200,10 @@ public class RunTest {
 				molinaPayment.closeAllOtherTabs();
 			}
 			
+			String customerFolderPath = properties.getProperty("backupFolderPath") + File.separator + customer;
+		        
+		        csv.compareLastTwoCSVs(customerFolderPath,List.of("GroupName", "LobName","ProgramName"));
+			
 		}finally {
 			report.saveReport(customer,method);
 			driver.quit();

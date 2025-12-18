@@ -156,6 +156,28 @@ public class PaymentHTML extends PaymentHelper {
 						.until(ExpectedConditions.visibilityOfElementLocated(
 								By.xpath(String.format(properties.getProperty("providerName"), formattedQuarter))))
 						.getText();
+				System.out.println(provider);
+				
+				String providerNPI = wait
+						.until(ExpectedConditions.visibilityOfElementLocated(
+								By.xpath(String.format(properties.getProperty("NPI"), formattedQuarter))))
+						.getText();
+				//System.out.println(providerNPI);
+				String taxId = wait
+						.until(ExpectedConditions.visibilityOfElementLocated(
+								By.xpath(String.format(properties.getProperty("taxId"), formattedQuarter))))
+						.getText();
+				//System.out.println(taxId);
+				String rundate = wait
+						.until(ExpectedConditions.visibilityOfElementLocated(
+								By.xpath(String.format(properties.getProperty("rundate"), formattedQuarter))))
+						.getText();
+				//System.out.println(rundate);
+				String rundateValue = wait
+						.until(ExpectedConditions.visibilityOfElementLocated(
+								By.xpath(String.format(properties.getProperty("rundateValue"), formattedQuarter))))
+						.getText();
+				//System.out.println(rundateValue);
 
 				takeScreenshot(customer);
 

@@ -2,6 +2,7 @@ package molina;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -41,10 +43,13 @@ public class MolinaPayment_new extends PaymentHelper {
 	Map<String, Boolean> incentiveProgramDropdownPresent = new LinkedHashMap<>();
 	Set<String> programsfromExtract = new LinkedHashSet<>();
 	boolean isIncentiveCardPresentInMedicare = false;
+	boolean modalOpened = false;
 
 	Map<String, List<Map<String, Object>>> earnedDetailsModalMap = new LinkedHashMap<>();
 	List<String[]> deferredPaymentPrintLogs = new ArrayList<>();
 	List<String[]> deferredcountyPrintLogs = new ArrayList<>();
+
+	List<List<String>> backupRows = new ArrayList<>();
 
 	public void validateMolina(String GroupName) {
 		List<String[]> programDetails = programDetailsfromCSV.get(GroupName.trim());
@@ -73,6 +78,12 @@ public class MolinaPayment_new extends PaymentHelper {
 				programDataList.add(programData);
 				programDataMap.put(lobName, programDataList);
 
+				List<String> backupRow = Arrays.asList(GroupName, lobName, programName,
+						String.valueOf(programData.get("EarnedPts")), String.valueOf(programData.get("PotentialPts")),
+						String.valueOf(programData.get("EarnAmaount")),
+						String.valueOf(programData.get("PotentialAmaount")));
+				backupRows.add(backupRow);
+
 				if (!programData.get("PotentialPayout").equals("N/A")) {
 					metricDataMap = getMetricIncentiveDetails(customer, programName, lobMeasuresfromCSV);
 					compareMolinaPayment(GroupName, lobName, programName);
@@ -90,17 +101,17 @@ public class MolinaPayment_new extends PaymentHelper {
 			}
 
 		}
+		takeDataForBackup();
 		comparePrograms(GroupName);
 
-		report.logTestResult(GroupName, "", "", "", "", "");
-		for (String[] log : deferredcountyPrintLogs) {
-			report.logTestResult(log[0], log[1], log[2], log[3], log[4], log[5]);
-		}
 		report.logTestResult(GroupName, "", "", "", "", "");
 		for (String[] log : deferredPaymentPrintLogs) {
 			report.logTestResult(log[0], log[1], log[2], log[3], log[4], log[5]);
 		}
 		report.logTestResult(GroupName, "", "", "", "", "");
+		for (String[] log : deferredcountyPrintLogs) {
+			report.logTestResult(log[0], log[1], log[2], log[3], log[4], log[5]);
+		}
 
 	}
 
@@ -209,20 +220,30 @@ public class MolinaPayment_new extends PaymentHelper {
 			e.printStackTrace();
 		}
 
-		int countyCount = driver.findElements(By.xpath(properties.getProperty("county"))).size();
-
-		if ("MRPL-IPA-FQHC".equals(programName) && countyCount == 0) {
-			countyDataList.add(extractModalData("NA"));
-		} else {
-			for (int k = 0; k < countyCount; k++) {
-				WebElement county = wait.until(ExpectedConditions
-						.visibilityOf(driver.findElements(By.xpath(properties.getProperty("county"))).get(k)));
-				county.click();
-				countyDataList.add(extractModalData(county.getText()));
-			}
+		try {
+			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("modalHeader"))));
+			modalOpened = true;
+		} catch (TimeoutException e) {
+			modalOpened = false;
 		}
 
-		driver.findElement(By.xpath(properties.getProperty("cross"))).click();
+		if (modalOpened) {
+
+			int countyCount = driver.findElements(By.xpath(properties.getProperty("county"))).size();
+
+			if ("MRPL-IPA-FQHC".equals(programName) && countyCount == 0) {
+				countyDataList.add(extractModalData("NA"));
+			} else {
+				for (int k = 0; k < countyCount; k++) {
+					WebElement county = wait.until(ExpectedConditions
+							.visibilityOf(driver.findElements(By.xpath(properties.getProperty("county"))).get(k)));
+					county.click();
+					countyDataList.add(extractModalData(county.getText()));
+				}
+			}
+
+			driver.findElement(By.xpath(properties.getProperty("cross"))).click();
+		}
 		return countyDataList;
 	}
 
@@ -230,10 +251,6 @@ public class MolinaPayment_new extends PaymentHelper {
 		Map<String, Object> data = new LinkedHashMap<>();
 		data.put("county", countyName);
 
-		data.put("header",
-				wait.until(
-						ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("modalHeader"))))
-						.getText());
 		data.put("earnedPtsInModal",
 				Double.parseDouble(wait
 						.until(ExpectedConditions
@@ -264,6 +281,13 @@ public class MolinaPayment_new extends PaymentHelper {
 						.until(ExpectedConditions
 								.visibilityOfElementLocated(By.xpath(properties.getProperty("yearly_potential"))))
 						.getText().replace("$", "").replace(",", "")));
+
+		List<WebElement> graphBarElements = driver.findElements(By.xpath(properties.getProperty("graphBar")));
+		if (graphBarElements != null && !graphBarElements.isEmpty()) {
+			data.put("graphBarPresent", "Yes");
+		} else {
+			data.put("graphBarPresent", "No");
+		}
 
 		List<Double> pmpm = new ArrayList<>();
 		for (WebElement elem : driver.findElements(By.xpath(properties.getProperty("pmpm"))))
@@ -393,6 +417,9 @@ public class MolinaPayment_new extends PaymentHelper {
 
 	public void compareMolinaPayment(String GroupName, String Lob, String Program) {
 		double totalMetricActualPay = 0, totalMetricPotentialPay = 0;
+		boolean actualMatch = false;
+		boolean potentialMatch = false;
+
 		for (Map.Entry<String, Map<String, Object>> entry : metricDataMap.entrySet()) {
 
 			Map<String, Object> data = entry.getValue();
@@ -409,178 +436,199 @@ public class MolinaPayment_new extends PaymentHelper {
 					double earnedPts = (double) data.get("EarnedPts");
 					double potentialPts = (double) data.get("PotentialPts");
 
-					boolean actualMatch = (earnedPts == totalMetricActualPay);
-					boolean potentialMatch = (potentialPts == totalMetricPotentialPay);
+					 actualMatch = (earnedPts == totalMetricActualPay);
+					 potentialMatch = (potentialPts == totalMetricPotentialPay);
 					String ptsMatch = (actualMatch && potentialMatch) ? "Pass" : "Fail";
 
 					deferredPaymentPrintLogs.add(new String[] { GroupName, "Actual & Potential points match", ptsMatch,
-							"Registry Actual: " + data.get("EarnedPts") + " , Sum Actual: " + totalMetricActualPay
-									+ " | Registry Potential: " + data.get("PotentialPts") + " , Sum Potential: "
-									+ totalMetricPotentialPay,
+							"Registry Earned pts: " + data.get("EarnedPts") + " , Sum of metric earned pts: "
+									+ totalMetricActualPay + " | Registry Potential pts: " + data.get("PotentialPts")
+									+ " , Sum of metric potential pts: " + totalMetricPotentialPay,
 							Lob, Program });
 
 				}
 			}
 
 		}
+		if (actualMatch && potentialMatch) {
+			
+			List<String[]> pmpmDetails = pmpmDetailFromCSV.get(Program.trim());
+			
+			
 
-		for (Map.Entry<String, Map<String, Object>> entry : metricDataMap.entrySet()) {
+			for (Map.Entry<String, Map<String, Object>> entry : metricDataMap.entrySet()) {
 
-			String metricName = entry.getKey();
+				String metricName = entry.getKey();
 
-			int expectedCoinStack = (int) metricDataMap.get(metricName).get("ExpectedCoinStack");
-			int actualCoinStack = (int) metricDataMap.get(metricName).get("actualCoinStack");
-			String IsMetricPresentInDataset = (String) metricDataMap.get(metricName).get("IsMetricPresentInDataset");
-			double metricPotentialPay = (double) metricDataMap.get(metricName).get("MetricPotentialPay");
-			double metricIncentive = (double) metricDataMap.get(metricName).get("MetricIncentive");
-			int denom = (int) metricDataMap.get(metricName).get("denominator");
+				int expectedCoinStack = (int) metricDataMap.get(metricName).get("ExpectedCoinStack");
+				int actualCoinStack = (int) metricDataMap.get(metricName).get("actualCoinStack");
+				String IsMetricPresentInDataset = (String) metricDataMap.get(metricName)
+						.get("IsMetricPresentInDataset");
+				double metricPotentialPay = (double) metricDataMap.get(metricName).get("MetricPotentialPay");
+				double metricActualPay = (double) metricDataMap.get(metricName).get("MetricActualPay");
+				double metricIncentive = (double) metricDataMap.get(metricName).get("MetricIncentive");
+				int denom = (int) metricDataMap.get(metricName).get("denominator");
 
-			String metricPass = (expectedCoinStack == actualCoinStack) && (IsMetricPresentInDataset.equals("Yes"))
-					&& (metricPotentialPay == metricIncentive) && (denom != 0) ? "Pass" : "Fail";
+				boolean tooltip;
 
-			deferredPaymentPrintLogs.add(new String[] { GroupName, metricName, metricPass,
-					"Expected Coin stack: " + (int) metricDataMap.get(metricName).get("ExpectedCoinStack")
-							+ " , Actual Coin stack: " + (int) metricDataMap.get(metricName).get("actualCoinStack")
-							+ "| " + "Is Metric Present In Dataset: "
-							+ (String) metricDataMap.get(metricName).get("IsMetricPresentInDataset") + "|"
-							+ "Max pts in dataset: " + metricIncentive + ", " + "Potential pts in registry: "
-							+ metricPotentialPay + "| Denom :" + (int) metricDataMap.get(metricName).get("denominator"),
-					Lob, Program });
+				if (metricActualPay != metricPotentialPay) {
+					tooltip = metricDataMap.get(metricName).get("tooltipPresent").equals("Yes") ? true : false;
+				} else {
+					tooltip = metricDataMap.get(metricName).get("tooltipPresent").equals("NA") ? true : false;
+				}
 
+				String metricPass = (expectedCoinStack == actualCoinStack) && (IsMetricPresentInDataset.equals("Yes"))
+						&& (metricPotentialPay == metricIncentive) && (denom != 0) && tooltip ? "Pass" : "Fail";
+
+				deferredPaymentPrintLogs.add(new String[] { GroupName, metricName, metricPass,
+						"Is Metric Present In Context key: "
+								+ (String) metricDataMap.get(metricName).get("IsMetricPresentInDataset") + " | Denom :"
+								+ (int) metricDataMap.get(metricName).get("denominator") + " | Max pts in Context key: "
+								+ metricIncentive + ", Potential pts in registry: " + metricPotentialPay
+								+ " | Expected Coin stack: "
+								+ (int) metricDataMap.get(metricName).get("ExpectedCoinStack")
+								+ " , Actual Coin stack: " + (int) metricDataMap.get(metricName).get("actualCoinStack")
+								+ " | Tooltip value:" + (String) metricDataMap.get(metricName).get("pair"),
+						Lob, Program });
+
+			}
 		}
 
 	}
 
 	public void compareEarnedDetails(String GroupName, String Lob, String Program) {
-		if (Lob.equals("Medicare"))
+		if ("Medicare".equalsIgnoreCase(Lob))
 			return;
+
+		deferredcountyPrintLogs.add(new String[] { GroupName, "Earned pts Details modal opened",
+				modalOpened ? "Pass" : "Fail", modalOpened ? "Modal opened" : "Modal did not open", Lob, Program });
 
 		List<Map<String, Object>> countyDataList = earnedDetailsModalMap.get(Program);
 
 		if ("MRPL-IPA-FQHC".equals(Program)) {
-			if (countyDataList.size() == 1 && "NA".equals(countyDataList.get(0).get("county"))) {
 
-				deferredcountyPrintLogs.add(new String[] { GroupName, "County Check", "Pass",
-						"County dropdown correctly not present for program", Lob, Program });
-			} else {
-				StringBuilder counties = new StringBuilder();
-				for (Map<String, Object> c : countyDataList) {
-					if (counties.length() > 0)
-						counties.append(", ");
-					counties.append(c.get("county").toString());
-				}
-				String countyStr = counties.length() > 0 ? counties.toString() : "None";
+			boolean countyPass = countyDataList.size() == 1 && "NA".equals(countyDataList.get(0).get("county"));
 
-				deferredcountyPrintLogs.add(new String[] { GroupName, "County Check", "Fail",
-						"County dropdown should not be present for program, but found: " + countyStr, Lob, Program });
-			}
+			deferredcountyPrintLogs.add(new String[] { GroupName, "County Check", countyPass ? "Pass" : "Fail",
+					countyPass ? "County dropdown correctly not present for program"
+							: "County dropdown should not be present for program",
+					Lob, Program });
+
 		} else {
-			if (!countyDataList.isEmpty()) {
-				StringBuilder counties = new StringBuilder();
-				for (Map<String, Object> c : countyDataList) {
-					if (counties.length() > 0)
-						counties.append(", ");
-					counties.append(c.get("county").toString());
-				}
-				String countyStr = counties.toString();
 
-				deferredcountyPrintLogs.add(new String[] { GroupName, "County Check", "Pass",
-						"County dropdown correctly present: " + countyStr, Lob, Program });
-			} else {
+			deferredcountyPrintLogs
+					.add(new String[] { GroupName, "County Check", countyDataList.isEmpty() ? "Fail" : "Pass",
+							countyDataList.isEmpty()
+									? "County dropdown should be present for program but no counties found"
+									: "County dropdown correctly present",
+							Lob, Program });
+		}
 
-				deferredcountyPrintLogs.add(new String[] { GroupName, "County Check", "Fail",
-						"County dropdown should be present for program but no counties found", Lob, Program });
+		double registryEarnedAmount = 0;
+		double registryPotentialAmount = 0;
+		double registryEarnedPts = 0;
+		double registryPotentialPts = 0;
+
+		for (Map<String, Object> data : programDataMap.get(Lob)) {
+			if (data.get("Program").equals(Program)) {
+				registryEarnedAmount = (double) data.get("EarnAmaount");
+				registryPotentialAmount = (double) data.get("PotentialAmaount");
+				registryEarnedPts = (double) data.get("EarnedPts");
+				registryPotentialPts = (double) data.get("PotentialPts");
+				break;
 			}
 		}
 
-		double potentialPay = 0;
-		double earnedPay = 0;
-		double modalEarnedPts;
-		double modalPotentialPts;
-		double modalYearlyEarned = 0;
-		double modalYearlyPotential = 0;
-		String county;
-		double earnedAmountInRegistry = 0;
-		double potentialAmountInRegistry = 0;
-
-		String PMPMmatch;
-		double ptsfromContext = 0;
-		double PMPMfromContext = 0;
-		double potentialPMPM;
-		double actualPMPM;
+		double modalEarnedTotal = 0;
+		double modalPotentialTotal = 0;
 
 		List<String[]> pmpmDetails = pmpmDetailFromCSV.get(Program.trim());
+
 		for (Map<String, Object> countyData : countyDataList) {
-			county = (String) countyData.get("county");
-			modalEarnedPts = (double) countyData.get("earnedPtsInModal");
-			modalPotentialPts = (double) countyData.get("potentialPtsInModal");
-			modalYearlyEarned = (double) countyData.get("yearlyEarned");
-			modalYearlyPotential = (double) countyData.get("yearlyPotential");
-			potentialPMPM = (double) countyData.get("potentialPMPM");
-			actualPMPM = (double) countyData.get("currentPMPM");
 
-			earnedPay += modalYearlyEarned;
-			potentialPay += modalYearlyPotential;
+			String county = (String) countyData.get("county");
 
-			double bestPotentialPts = 0;
+			double modalEarnedPts = (double) countyData.get("earnedPtsInModal");
+			double modalPotentialPts = (double) countyData.get("potentialPtsInModal");
+			double modalYearlyEarned = (double) countyData.get("yearlyEarned");
+			double modalYearlyPotential = (double) countyData.get("yearlyPotential");
+			double actualPMPM = (double) countyData.get("currentPMPM");
+			double potentialPMPM = (double) countyData.get("potentialPMPM");
+			double membership = (double) countyData.get("membership");
+			double pmpmUnlocked = (double) countyData.get("pmpmUnlocked");
+			String graphBarPresent = (String) countyData.get("graphBarPresent");
+
+			modalEarnedTotal += modalYearlyEarned;
+			modalPotentialTotal += modalYearlyPotential;
+
 			double bestEarnedPts = 0;
-			double expectedPotentialPMPM = 0;
+			double bestPotentialPts = 0;
 			double expectedActualPMPM = 0;
+			double expectedPotentialPMPM = 0;
 
-			for (String[] pts : pmpmDetails) {
-			    if (county.equals(pts[0].trim())) {
+			for (String[] row : pmpmDetails) {
+				if (county.equals(row[0].trim())) {
 
-			        ptsfromContext = Double.parseDouble(pts[1]);
-			        PMPMfromContext = Double.parseDouble(pts[2]);
+					double pts = Double.parseDouble(row[1]);
+					double pmpm = Double.parseDouble(row[2]);
 
-			        if (ptsfromContext <= modalPotentialPts && ptsfromContext > bestPotentialPts) {
-			            bestPotentialPts = ptsfromContext;
-			            expectedPotentialPMPM = PMPMfromContext;
-			        }
-
-			        if (ptsfromContext <= modalEarnedPts && ptsfromContext > bestEarnedPts) {
-			            bestEarnedPts = ptsfromContext;
-			            expectedActualPMPM = PMPMfromContext;
-			        }
-			    }
-			}
-
-			// Compare chosen PMPM to modal PMPM
-			boolean potentialMatchFound = (expectedPotentialPMPM == potentialPMPM);
-			boolean actualMatchFound = (expectedActualPMPM == actualPMPM);
-
-			PMPMmatch = (potentialMatchFound && actualMatchFound) ? "Pass" : "Fail";
-
-
-
-			for (Map<String, Object> data : programDataMap.get(Lob)) {
-				if (data.get("Program").equals(Program)) {
-					String PtsMatch = (modalEarnedPts == (double) data.get("EarnedPts"))
-							&& (modalPotentialPts == (double) data.get("PotentialPts")) ? "Pass" : "Fail";
-
-					earnedAmountInRegistry = (double) data.get("EarnAmaount");
-					potentialAmountInRegistry = (double) data.get("PotentialAmaount");
-
-					deferredcountyPrintLogs.add(new String[] { GroupName, "Pts Match in modal", PtsMatch,
-							"Registry: " + (double) data.get("EarnedPts") + "/" + (double) data.get("PotentialPts")
-									+ " | Modal: " + modalEarnedPts + "/" + modalPotentialPts,
-							Lob, Program + "- " + county });
-
+					if (pts <= modalEarnedPts && pts > bestEarnedPts) {
+						bestEarnedPts = pts;
+						expectedActualPMPM = pmpm;
+					}
+					if (pts <= modalPotentialPts && pts > bestPotentialPts) {
+						bestPotentialPts = pts;
+						expectedPotentialPMPM = pmpm;
+					}
 				}
 			}
 
-			deferredcountyPrintLogs.add(new String[] { GroupName, "PMPM Match in modal", PMPMmatch,
-					"Actual PMPM: " + actualPMPM + "Potential PMPM: " + potentialPMPM, Lob, Program + "- " + county });
+			deferredcountyPrintLogs.add(new String[] { GroupName, "Pts Match in modal",
+					(modalEarnedPts == registryEarnedPts && modalPotentialPts == registryPotentialPts) ? "Pass"
+							: "Fail",
+					"Registry: " + registryEarnedPts + "/" + registryPotentialPts + " | Modal: " + modalEarnedPts + "/"
+							+ modalPotentialPts,
+					Lob, Program + "- " + county });
 
+			deferredcountyPrintLogs
+					.add(new String[] { GroupName, "PMPM Match in modal",
+							(expectedActualPMPM == actualPMPM && expectedPotentialPMPM == potentialPMPM) ? "Pass"
+									: "Fail",
+							"Actual PMPM: " + actualPMPM + " | Potential PMPM: " + potentialPMPM, Lob,
+							Program + "- " + county });
+
+			deferredcountyPrintLogs.add(new String[] { GroupName, "Graph bar present",
+					"Yes".equals(graphBarPresent) ? "Pass" : "Fail", "", Lob, Program + "- " + county });
+
+			deferredcountyPrintLogs.add(new String[] { GroupName, "pmpmUnlocked match",
+					actualPMPM == pmpmUnlocked ? "Pass" : "Fail",
+					"pmpmUnlocked: " + pmpmUnlocked + " | actualPMPM: " + actualPMPM, Lob, Program + "- " + county });
+
+			double expectedEarnedAmount = 12 * membership * expectedActualPMPM;
+			double expectedPotentialAmount = 12 * membership * expectedPotentialPMPM;
+
+			deferredcountyPrintLogs.add(new String[] { GroupName, "Dollar Amount Match By Formula",
+					(expectedEarnedAmount == modalYearlyEarned && expectedPotentialAmount == modalYearlyPotential)
+							? "Pass"
+							: "Fail",
+					"Formula: " + expectedEarnedAmount + "/" + expectedPotentialAmount + " | Modal: "
+							+ modalYearlyEarned + "/" + modalYearlyPotential,
+					Lob, Program + "- " + county });
 		}
-		String dollarMatch = (earnedPay == earnedAmountInRegistry) && (potentialPay == potentialAmountInRegistry)
-				? "Pass"
-				: "Fail";
-		deferredcountyPrintLogs.add(new String[] {
-				GroupName, "Dollar amount Match in modal", dollarMatch, "Registry: " + (double) earnedAmountInRegistry
-						+ "/" + (double) potentialAmountInRegistry + " | Modal: " + earnedPay + "/" + potentialPay,
+
+		deferredcountyPrintLogs.add(new String[] { GroupName, "Dollar amount Match in modal",
+				(modalEarnedTotal == registryEarnedAmount && modalPotentialTotal == registryPotentialAmount) ? "Pass"
+						: "Fail",
+				"Registry: " + registryEarnedAmount + "/" + registryPotentialAmount + " | Modal: " + modalEarnedTotal
+						+ "/" + modalPotentialTotal,
 				Lob, Program });
 
+	}
+
+	public void takeDataForBackup() {
+		List<String> headers = Arrays.asList("GroupName", "LobName", "ProgramName", "Earned Pts", "Potential Pts",
+				"Earned Amount", "Potential Amount");
+		csv.takeBackup(headers, backupRows);
 	}
 
 }
