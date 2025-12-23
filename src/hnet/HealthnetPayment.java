@@ -165,7 +165,7 @@ public class HealthnetPayment extends PaymentHelper {
 						String metricAbbr = coin.findElement(By.xpath(properties.getProperty("metric_abbr"))).getText()
 								.trim().replace("\u00B7", "");
 
-						 //System.out.println(metricAbbr);
+						 System.out.println(metricAbbr);
 						 
 						 WebElement metricActualelem= wait.until(
 						            ExpectedConditions.visibilityOf(coin.findElement(By.xpath(properties.getProperty("metricActualPay"))))

@@ -42,7 +42,7 @@ public class RunTest {
 		Url = properties.getProperty(env);
 		customer = custName;
 		this.method = method;
-	}
+		System.out.println("");	}
 
 	WebDriver driver = DriverSetup.getDriver();
 
@@ -165,7 +165,7 @@ public class RunTest {
 	      //  csv.compareLastTwoCSVs(customerFolderPath,List.of("Provider", "Quarter"));
 		} finally {
 			report.saveReport(customer,method);
-			driver.quit();
+			//driver.quit();
 
 		}
 	}
