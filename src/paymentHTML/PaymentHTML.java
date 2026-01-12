@@ -52,8 +52,7 @@ public class PaymentHTML extends PaymentHelper {
 
 		try {
 
-			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("sidebar"))))
-					.click();
+			//wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("sidebar")))).click();
 			wait.until(
 					ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("reportInSidebar"))))
 					.click();

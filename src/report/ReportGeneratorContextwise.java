@@ -352,7 +352,8 @@ public class ReportGeneratorContextwise {
 
         try (FileOutputStream out = new FileOutputStream(fullPath)) {
             workbook.write(out);
-            workbook.close();
+            out.flush();   
+            //workbook.close();
             System.out.println("✅ Report saved: " + fullPath);
         } catch (IOException e) {
             System.err.println("❌ Failed to save Excel report: " + e.getMessage());

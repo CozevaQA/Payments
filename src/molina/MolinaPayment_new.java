@@ -384,31 +384,79 @@ public class MolinaPayment_new extends PaymentHelper {
 						"Programs In Extract: " + referenceSet + " , Programs In UI:" + actualProgramSet, lob, "");
 
 				for (Map<String, Object> program : programList) {
+
 					String programName = program.get("Program").toString().trim();
 
-					String potentialpoints = program.get("EarnedPts") + "/" + program.get("PotentialPts");
-					String potentialPayout = (String) program.get("PotentialPayout");
+					double earnedPts = (double) program.get("EarnedPts");
+					double potentialPts = (double) program.get("PotentialPts");
 
-					if (!potentialpoints.equals("0.00/0.00") && !potentialPayout.equals("0.00/0.00")) {
-						if (potentialpoints.equals("-1.0/-1.0")) {
-							report.logTestResult(GroupName, "Incentive points & dollar amount !=0", "Pass", "NA", lob,
-									programName);
+					double earnedAmount = (double) program.get("EarnAmaount");
+					double potentialAmount = (double) program.get("PotentialAmaount");
 
-						} else {
-							report.logTestResult(
-									GroupName, "Incentive points & dollar amount !=0", "Pass", "Incentive Points: "
-											+ potentialpoints + " | Incentive dollar amount: " + potentialPayout,
-									lob, programName);
-						}
+					String potentialPayout = program.get("PotentialPayout").toString();
+
+					// renamed to clearly represent missing data
+					boolean isIncentiveValueNotPresent = earnedPts == -1.0 && potentialPts == -1.0
+							&& earnedAmount == -1.0 && potentialAmount == -1.0;
+
+					// FAIL if program is expected (in referenceSet) but data missing
+					boolean isDataMissingButProgramExpected = isIncentiveValueNotPresent
+							&& referenceSet.contains(programName);
+
+					boolean isZeroPts = potentialPts == 0.0;
+					boolean isZeroAmount = potentialAmount == 0.0;
+
+					boolean isValidPts = earnedPts <= potentialPts;
+					boolean isValidAmount = earnedAmount <= potentialAmount;
+					
+					 String displayPts = (earnedPts == -1.0 && potentialPts == -1.0) ? "NA" : earnedPts + "/" + potentialPts;
+					    String displayAmount = (earnedAmount == -1.0 && potentialAmount == -1.0) ? "NA"
+					            : earnedAmount + "/" + potentialAmount;
+
+					if (!isDataMissingButProgramExpected && (!isIncentiveValueNotPresent && !isZeroPts && !isZeroAmount
+							&& isValidPts && isValidAmount
+							|| (!referenceSet.contains(programName) && isIncentiveValueNotPresent))) {
+
+						report.logTestResult(GroupName,
+								"Earned/Potential points & amount != 0/0 and Earned <= Potential", "Pass",
+								isIncentiveValueNotPresent ? "NA"
+										: "Points: " + displayPts + " | Amount: " + displayAmount,
+								lob, programName);
 
 					} else {
-						report.logTestResult(
-								GroupName, "Incentive points & dollar amount !=0", "Fail", "Incentive Points: "
-										+ potentialpoints + " | Incentive dollar amount: " + potentialPayout,
+
+						report.logTestResult(GroupName,
+								"Earned/Potential points & amount != 0/0 and Earned <= Potential", "Fail",
+								"Points: " + displayPts + " | Amount: " + displayAmount,
 								lob, programName);
 					}
-
 				}
+
+				/*
+				 * for (Map<String, Object> program : programList) { String programName =
+				 * program.get("Program").toString().trim();
+				 * 
+				 * String potentialpoints = program.get("EarnedPts") + "/" +
+				 * program.get("PotentialPts"); String potentialPayout = (String)
+				 * program.get("PotentialPayout");
+				 * 
+				 * if (!potentialpoints.equals("0.00/0.00") &&
+				 * !potentialPayout.equals("0.00/0.00")) { if
+				 * (potentialpoints.equals("-1.0/-1.0")) { report.logTestResult(GroupName,
+				 * "Incentive points & dollar amount !=0", "Pass", "NA", lob, programName);
+				 * 
+				 * } else { report.logTestResult( GroupName,
+				 * "Incentive points & dollar amount !=0", "Pass", "Incentive Points: " +
+				 * potentialpoints + " | Incentive dollar amount: " + potentialPayout, lob,
+				 * programName); }
+				 * 
+				 * } else { report.logTestResult( GroupName,
+				 * "Incentive points & dollar amount !=0", "Fail", "Incentive Points: " +
+				 * potentialpoints + " | Incentive dollar amount: " + potentialPayout, lob,
+				 * programName); }
+				 * 
+				 * }
+				 */
 			}
 
 		}
@@ -436,8 +484,8 @@ public class MolinaPayment_new extends PaymentHelper {
 					double earnedPts = (double) data.get("EarnedPts");
 					double potentialPts = (double) data.get("PotentialPts");
 
-					 actualMatch = (earnedPts == totalMetricActualPay);
-					 potentialMatch = (potentialPts == totalMetricPotentialPay);
+					actualMatch = (earnedPts == totalMetricActualPay);
+					potentialMatch = (potentialPts == totalMetricPotentialPay);
 					String ptsMatch = (actualMatch && potentialMatch) ? "Pass" : "Fail";
 
 					deferredPaymentPrintLogs.add(new String[] { GroupName, "Actual & Potential points match", ptsMatch,
@@ -451,10 +499,8 @@ public class MolinaPayment_new extends PaymentHelper {
 
 		}
 		if (actualMatch && potentialMatch) {
-			
+
 			List<String[]> pmpmDetails = pmpmDetailFromCSV.get(Program.trim());
-			
-			
 
 			for (Map.Entry<String, Map<String, Object>> entry : metricDataMap.entrySet()) {
 
@@ -468,6 +514,7 @@ public class MolinaPayment_new extends PaymentHelper {
 				double metricActualPay = (double) metricDataMap.get(metricName).get("MetricActualPay");
 				double metricIncentive = (double) metricDataMap.get(metricName).get("MetricIncentive");
 				int denom = (int) metricDataMap.get(metricName).get("denominator");
+				int num = (int) metricDataMap.get(metricName).get("numerator");
 
 				boolean tooltip;
 
@@ -476,15 +523,20 @@ public class MolinaPayment_new extends PaymentHelper {
 				} else {
 					tooltip = metricDataMap.get(metricName).get("tooltipPresent").equals("NA") ? true : false;
 				}
+				
+				boolean earedZeroWhennumZero =( num == 0 && metricActualPay != 0) ? false: true;
+				
 
 				String metricPass = (expectedCoinStack == actualCoinStack) && (IsMetricPresentInDataset.equals("Yes"))
-						&& (metricPotentialPay == metricIncentive) && (denom != 0) && tooltip ? "Pass" : "Fail";
+						&& (metricPotentialPay == metricIncentive) && (metricActualPay<=metricPotentialPay)&& (denom != 0)&& earedZeroWhennumZero && tooltip ? "Pass" : "Fail";
 
 				deferredPaymentPrintLogs.add(new String[] { GroupName, metricName, metricPass,
 						"Is Metric Present In Context key: "
-								+ (String) metricDataMap.get(metricName).get("IsMetricPresentInDataset") + " | Denom :"
-								+ (int) metricDataMap.get(metricName).get("denominator") + " | Max pts in Context key: "
+								+ (String) metricDataMap.get(metricName).get("IsMetricPresentInDataset") 
+								+ " | Earned/Potential: " + metricActualPay + "/" + metricPotentialPay
+								+ " | Num/Denom: "	+ num+"/"+denom + " | Max pts in Context key: "
 								+ metricIncentive + ", Potential pts in registry: " + metricPotentialPay
+								+ " | Metric Actual Pay<= Metric Potential Pay : "+ (metricActualPay<=metricPotentialPay)
 								+ " | Expected Coin stack: "
 								+ (int) metricDataMap.get(metricName).get("ExpectedCoinStack")
 								+ " , Actual Coin stack: " + (int) metricDataMap.get(metricName).get("actualCoinStack")

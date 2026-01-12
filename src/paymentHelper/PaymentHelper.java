@@ -40,7 +40,7 @@ public class PaymentHelper {
 	public PaymentHelper(WebDriver driver) throws IOException {
 		this.driver = driver;
 		// this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-		this.wait = new WebDriverWait(driver, 60);
+		this.wait = new WebDriverWait(driver, 30);
 		FileInputStream file = new FileInputStream(Main.configPath);
 		properties.load(file);
 	}
@@ -208,6 +208,9 @@ public class PaymentHelper {
 			int patientDenom = Integer
 					.parseInt(coin.findElement(By.xpath(properties.getProperty("patientCount"))).getText().split("/")[1]
 							.replace(",", "").trim());
+			int patientNum = Integer
+					.parseInt(coin.findElement(By.xpath(properties.getProperty("patientCount"))).getText().split("/")[0]
+							.replace(",", "").trim());
 
 			Double metricActual = Double
 					.parseDouble(coin.findElement(By.xpath(properties.getProperty("metricActualPay"))).getText()
@@ -287,6 +290,7 @@ public class PaymentHelper {
 			metricData.put("ExpectedCoinStack", expectedCoinStack);
 			metricData.put("actualCoinStack", actualCoinStack);
 			metricData.put("denominator", patientDenom);
+			metricData.put("numerator", patientNum);
 			metricData.put("IsMetricPresentInDataset", ifMeasureNamePresentInDataset);
 			metricData.put("MetricIncentive", incentiveFrmDataset);
 			metricData.put("tooltipPresent", tooltipPresent);
