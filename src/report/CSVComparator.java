@@ -15,7 +15,7 @@ public class CSVComparator {
     ReportGeneratorContextwise report;
 
     public CSVComparator() throws IOException {
-        report = ReportGeneratorContextwise.getInstance();
+    	report = ReportGeneratorContextwise.getInstance();
     }
 
     public void compareLastTwoCSVs(String customerFolderPath, List<String> keyColumns) {

@@ -40,7 +40,7 @@ public class PaymentHelper {
 	public PaymentHelper(WebDriver driver) throws IOException {
 		this.driver = driver;
 		// this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-		this.wait = new WebDriverWait(driver, 30);
+		this.wait = new WebDriverWait(driver, 60);
 		FileInputStream file = new FileInputStream(Main.configPath);
 		properties.load(file);
 	}

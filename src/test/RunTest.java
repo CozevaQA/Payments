@@ -18,7 +18,6 @@ import capci.HnetCapci;
 import config.DriverSetup;
 import hnet.HealthnetPayment;
 import login.Login;
-import molina.MolinaPayment;
 import molina.MolinaPayment_new;
 import paymentHTML.PaymentHTML;
 import paymentHelper.PaymentHelper;
@@ -34,15 +33,16 @@ public class RunTest {
 	String customer;
 	String method;
 
-	public RunTest(String env, String custName,String method) throws IOException {
+	public RunTest(String env, String custName, String method) throws IOException {
 		FileInputStream file = new FileInputStream(Main.configPath);
 		properties.load(file);
-		//this.wait = new WebDriverWait(driver, Duration.ofSeconds(60));
+		// this.wait = new WebDriverWait(driver, Duration.ofSeconds(60));
 		this.wait = new WebDriverWait(driver, 30);
 		Url = properties.getProperty(env);
 		customer = custName;
 		this.method = method;
-		System.out.println("");	}
+		System.out.println("");
+	}
 
 	WebDriver driver = DriverSetup.getDriver();
 
@@ -56,15 +56,16 @@ public class RunTest {
 
 			login.LoginCozeva(Url);
 			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("context"))));
-			
-			List<String[]> practices = PaymentHelper.loadRegistryLinksFromCsv(properties.getProperty("capciPracticemap"));
+
+			List<String[]> practices = PaymentHelper
+					.loadRegistryLinksFromCsv(properties.getProperty("capciPracticemap"));
 
 			for (String[] practice : practices) {
 
 				String practiceName = practice[0];
 				String registryLink = Url + practice[1];
 
-				HnetCapci capci = new HnetCapci(driver,customer,method);
+				HnetCapci capci = new HnetCapci(driver, customer, method);
 
 				((JavascriptExecutor) driver).executeScript("window.open(arguments[0])", registryLink);
 
@@ -78,19 +79,18 @@ public class RunTest {
 				login.closeAllOtherTabs();
 
 			}
-			
-			
-	        String customerFolderPath = properties.getProperty("backupFolderPath") + File.separator + customer;
-	        
-	        //csv.compareLastTwoCSVs(customerFolderPath,List.of("Practice"));
+
+			String customerFolderPath = properties.getProperty("backupFolderPath") + File.separator + customer;
+
+			// csv.compareLastTwoCSVs(customerFolderPath,List.of("Practice"));
 		} finally {
-			report.saveReport(customer,method);
+			report.saveReport(customer, method);
 			driver.quit();
 
 		}
 
 	}
-	
+
 	public void runPaymentHTML() throws IOException {
 		try {
 
@@ -124,27 +124,31 @@ public class RunTest {
 	        String customerFolderPath = properties.getProperty("backupFolderPath") + File.separator + customer + File.separator + "PaymentHTML";
 	        
 	        csv.compareLastTwoCSVs(customerFolderPath,List.of("Provider", "Quarter"));
-		} finally {
+		}
+		
+			finally {
+		
 			report.saveReport(customer,method);
 			driver.quit();
 
 		}
 	}
-	
+
 	public void runHnet() throws IOException {
 		try {
 
 			login.LoginCozeva(Url);
 			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("context"))));
 
-			List<String[]> providers = PaymentHelper.loadRegistryLinksFromCsv(properties.getProperty("hnetProviderMap"));
+			List<String[]> providers = PaymentHelper
+					.loadRegistryLinksFromCsv(properties.getProperty("hnetProviderMap"));
 
 			for (String[] provider : providers) {
 
 				String providerNPI = provider[0];
 				String registryLink = Url + provider[1];
 
-				HealthnetPayment hnet = new HealthnetPayment(driver,customer,method);
+				HealthnetPayment hnet = new HealthnetPayment(driver, customer, method);
 
 				((JavascriptExecutor) driver).executeScript("window.open(arguments[0])", registryLink);
 
@@ -158,54 +162,59 @@ public class RunTest {
 				login.closeAllOtherTabs();
 
 			}
-			
-			
-	       // String customerFolderPath = properties.getProperty("backupFolderPath") + File.separator + customer + File.separator + "PaymentHTML";
-	        
-	      //  csv.compareLastTwoCSVs(customerFolderPath,List.of("Provider", "Quarter"));
+
+			// String customerFolderPath = properties.getProperty("backupFolderPath") +
+			// File.separator + customer + File.separator + "PaymentHTML";
+
+			// csv.compareLastTwoCSVs(customerFolderPath,List.of("Provider", "Quarter"));
 		} finally {
-			report.saveReport(customer,method);
-			//driver.quit();
+			report.saveReport(customer, method);
+			// driver.quit();
 
 		}
 	}
-	
+
 	public void runMolina() throws IOException {
-		
+		String groupName = null;
+
 		try {
-			
+
 			login.LoginCozeva(Url);
 			wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("context"))));
 
-			//List<String[]> groups = PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/MolinaDataset/MolinaGroupMap.csv");
-			
+			// List<String[]> groups =
+			// PaymentHelper.loadRegistryLinksFromCsv("assets/testdata/MolinaDataset/MolinaGroupMap.csv");
+
 			List<String[]> groups = PaymentHelper.loadRegistryLinksFromCsv(properties.getProperty("molinaGroupMap"));
-			
+
 			for (String[] group : groups) {
-				
-				String groupName = group[0];
+
+				 groupName = group[0];
 				String registryLink = Url + group[1];
-				
-				MolinaPayment_new molinaPayment = new MolinaPayment_new(driver,customer,method);
-				
+
+				MolinaPayment_new molinaPayment = new MolinaPayment_new(driver, customer, method);
+
 				((JavascriptExecutor) driver).executeScript("window.open(arguments[0])", registryLink);
-				
+
 				molinaPayment.switchToNewTab();
-				
+
 				WebElement context = wait.until(
 						ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("context"))));
 				System.out.println(context.getText());
-				
+
 				molinaPayment.validateMolina(groupName);
 				molinaPayment.closeAllOtherTabs();
 			}
-			
+
 			String customerFolderPath = properties.getProperty("backupFolderPath") + File.separator + customer;
-		        
-		        csv.compareLastTwoCSVs(customerFolderPath,List.of("GroupName", "LobName","ProgramName"));
-			
+
+			csv.compareLastTwoCSVs(customerFolderPath, List.of("GroupName", "LobName", "ProgramName"));
+
+		}  catch(Exception e){
+			report.logTestResult(groupName, groupName, "FAIL", e.getMessage(), "","");
+			e.printStackTrace();
 		}finally {
-			report.saveReport(customer,method);
+			report.saveReport(customer, method);
 			driver.quit();
 
 		}
