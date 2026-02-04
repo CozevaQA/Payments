@@ -87,8 +87,9 @@ public class HealthnetPayment extends PaymentHelper {
 				}
 				
 				driver.findElement(By.xpath(properties.getProperty("filterlist"))).click();
-				driver.findElement(By.xpath(properties.getProperty("hideSubmeasures"))).click();
-				
+				//driver.findElement(By.xpath(properties.getProperty("hideSubmeasures"))).click();
+				((JavascriptExecutor)driver).executeScript("arguments[0].scrollIntoView(true); arguments[0].click();", driver.findElement(By.xpath(properties.getProperty("hideSubmeasures"))));
+
 				((JavascriptExecutor)driver).executeScript("arguments[0].scrollIntoView(true); arguments[0].click();", driver.findElement(By.xpath(properties.getProperty("applyInFilter"))));
 
 				
@@ -165,7 +166,7 @@ public class HealthnetPayment extends PaymentHelper {
 						String metricAbbr = coin.findElement(By.xpath(properties.getProperty("metric_abbr"))).getText()
 								.trim().replace("\u00B7", "");
 
-						 //System.out.println(metricAbbr);
+						 System.out.println(metricAbbr);
 						 
 						 WebElement metricActualelem= wait.until(
 						            ExpectedConditions.visibilityOf(coin.findElement(By.xpath(properties.getProperty("metricActualPay"))))
@@ -223,7 +224,7 @@ public class HealthnetPayment extends PaymentHelper {
 						metricDataMap.put(metricName, metricData);
 
 						if (!lobName.equals("ALL") && !payerName.equals("ALL")) {
-							if (patientdenom <= 15 ) {
+							if (patientdenom <= 10 ) {
 								if (metricDataMap.get(metricName).get("IsMetricPresentInDataset").equals("Yes")) {
 									((JavascriptExecutor) driver).executeScript(
 											"arguments[0].scrollIntoView(true); arguments[0].click();", metricElement);
@@ -292,6 +293,7 @@ public class HealthnetPayment extends PaymentHelper {
 
 											incentives = metricInPatientDashboard.findElements(
 													(By.xpath(properties.getProperty("incentive_PatientDashboard"))));
+											takeScreenshot(customer);
 
 										} catch (Exception e) {
 											incentives = new ArrayList<>();

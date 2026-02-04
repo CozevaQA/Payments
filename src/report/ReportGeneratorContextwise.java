@@ -317,11 +317,17 @@ public class ReportGeneratorContextwise {
         rowTracker.put(providerName, currentRow);
     }
 
-    public void saveReport(String customerName,String method) {
+    public void saveReport(String customerName,String method, String year) {
         String basePath = properties.getProperty("baseFolderPath");
         String todayDate = new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date());
         String timestamp = new java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new java.util.Date());
-        String fileName = customerName + "_" + timestamp + ".xlsx";
+        String fileName;
+        if(year == null) {
+        	 fileName = customerName + "_" + timestamp + ".xlsx";
+        }else {
+        	 fileName = year+"_"+customerName + "_" + timestamp + ".xlsx";
+        }
+        
 
         String folderPath = basePath + File.separator + todayDate + File.separator + customerName;
 

@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -255,10 +256,13 @@ public class PaymentHTML extends PaymentHelper {
 						String.valueOf(paymentDataMap.get(quarterText).get("Amount Paid in Quarter")));
 				backupRows.add(backupRow);
 
+				((JavascriptExecutor)driver).executeScript("arguments[0].scrollIntoView(true); arguments[0].click();", driver.findElement(By.xpath(properties.getProperty("scrollProgramHeader"))));
+
 
 				List<WebElement> individualProgramHeaderElements = wait
-						.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(By.xpath(
+						.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.xpath(
 								String.format(properties.getProperty("individualProgramHeader"), formattedQuarter))));
+				System.out.println(individualProgramHeaderElements.size());
 
 				for (WebElement el : individualProgramHeaderElements) {
 					Map<String, Object> programData = new HashMap<>();

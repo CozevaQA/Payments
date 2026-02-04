@@ -40,7 +40,7 @@ public class PaymentHelper {
 	public PaymentHelper(WebDriver driver) throws IOException {
 		this.driver = driver;
 		// this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-		this.wait = new WebDriverWait(driver, 60);
+		this.wait = new WebDriverWait(driver, 30);
 		FileInputStream file = new FileInputStream(Main.configPath);
 		properties.load(file);
 	}
@@ -71,6 +71,21 @@ public class PaymentHelper {
 	public boolean isElementPresent(By locator) {
 		return !driver.findElements(locator).isEmpty();
 	}
+	
+	public void clickIfXpathExists(String xpath) {
+		 try {
+		        wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(xpath)));
+
+		        List<WebElement> elements = driver.findElements(By.xpath(xpath));
+		        if (!elements.isEmpty()) {
+		            elements.get(0).click();
+		            System.out.println("hide clicked");
+		        }
+		    } catch (TimeoutException e) {
+		        
+		    }
+	}
+
 
 	public void takeScreenshot(String customerName) {
 		String basePath = properties.getProperty("baseFolderPath");
@@ -181,11 +196,19 @@ public class PaymentHelper {
 	}
 
 	public void globalSearch(String cozevaID) {
-		wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("searchbar"))))
-				.sendKeys(cozevaID);
-		wait.until(ExpectedConditions
-				.visibilityOfElementLocated(By.xpath(properties.getProperty("searched_patientResult")))).click();
+	    WebElement searchBar = wait.until(
+	        ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("searchbar")))
+	    );
+	    searchBar.clear();  // ✅ clear any existing text
+	    searchBar.sendKeys(cozevaID);
+
+	    wait.until(
+	        ExpectedConditions.visibilityOfElementLocated(
+	            By.xpath(properties.getProperty("searched_patientResult"))
+	        )
+	    ).click();
 	}
+
 
 	public Map<String, Map<String, Object>> getMetricIncentiveDetails(String customerName, String context,
 			Map<String, List<String[]>> lobMeasuresfromCSV) {
@@ -258,6 +281,14 @@ public class PaymentHelper {
 			if (actualCoinStack < 6 && (metricActual != metricPotential)) {
 				Actions actions = new Actions(driver);
 				actions.moveToElement(coinStackBar).perform();
+				
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}			
+				takeScreenshot(customerName);
 
 				for (Double[] data : performancePercentage) {
 					System.out.println(metricActual);

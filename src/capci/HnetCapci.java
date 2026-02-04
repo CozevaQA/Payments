@@ -38,10 +38,9 @@ public class HnetCapci extends PaymentHelper {
 		report = ReportGeneratorContextwise.getInstance();
 	}
 
-	Map<String, List<String[]>> lobPatientsfromCSV = loadDataFromCsv(
-			properties.getProperty("patientsMap"));
+	Map<String, List<String[]>> lobPatientsfromCSV = loadDataFromCsv(properties.getProperty("HnetCapci_patientsMap"));
 
-	Map<String, List<String[]>> ageFactors = loadDataFromCsv(properties.getProperty("agefactor"));
+	Map<String, List<String[]>> ageFactors = loadDataFromCsv(properties.getProperty("HnetCapci_agefactor"));
 
 	Map<String, Map<String, Object>> practiceDataMap = new LinkedHashMap<>();
 	Map<String, Map<String, Object>> patientDataMap = new LinkedHashMap<>();
@@ -76,28 +75,28 @@ public class HnetCapci extends PaymentHelper {
 			globalSearch(patient[2]);
 			switchToNewTab();
 
-			/*WebElement ageElement = wait.until(
-					ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("patient_age"))));
-			int age = Integer
-					.parseInt(ageElement.getText().replace("y", "").replace("\u00B7", "").replace("\u00A0", "").trim());*/
+			/*
+			 * WebElement ageElement = wait.until(
+			 * ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty
+			 * ("patient_age")))); int age = Integer
+			 * .parseInt(ageElement.getText().replace("y", "").replace("\u00B7",
+			 * "").replace("\u00A0", "").trim());
+			 */
 
-			
-			  WebElement dobElement = wait.until(
-			  ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty
-			  ("patient_dob")))); 
-			  String dobStr = dobElement.getText().trim();
-			  
-			  //1st day of attribution month
-			  DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy"); 
-			  LocalDate dob =LocalDate.parse(dobStr, formatter); 
-			  //LocalDate referenceDate =LocalDate.of(2025, 11, 19);
-			  //LocalDate referenceDate =LocalDate.of(2025, 9, 1); 
-			  
-			  String refDateStr = properties.getProperty("referenceDate");
+			WebElement dobElement = wait.until(
+					ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("patient_dob"))));
+			String dobStr = dobElement.getText().trim();
 
-			  LocalDate referenceDate = LocalDate.parse(refDateStr, formatter);
-			  int age = Period.between(dob,referenceDate).getYears();
-			 
+			// 1st day of attribution month
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+			LocalDate dob = LocalDate.parse(dobStr, formatter);
+			// LocalDate referenceDate =LocalDate.of(2025, 11, 19);
+			// LocalDate referenceDate =LocalDate.of(2025, 9, 1);
+
+			String refDateStr = properties.getProperty("HnetCapci_referenceDate");
+
+			LocalDate referenceDate = LocalDate.parse(refDateStr, formatter);
+			int age = Period.between(dob, referenceDate).getYears();
 
 			WebElement genderElement = wait.until(
 					ExpectedConditions.visibilityOfElementLocated(By.xpath(properties.getProperty("patient_gender"))));
@@ -155,7 +154,7 @@ public class HnetCapci extends PaymentHelper {
 		}
 
 		double roundedIncentive = Math.round(totalIncentive * 100.0) / 100.0;
-		//double roundedIncentive = Math.round(totalIncentive * 10.0) / 10.0;
+		// double roundedIncentive = Math.round(totalIncentive * 10.0) / 10.0;
 
 		String earnedAndPotentialMatch = (double) practiceDataMap.get(practice)
 				.get("EarnPay") == (double) practiceDataMap.get(practice).get("PotentialPay") ? "Pass" : "Fail";
